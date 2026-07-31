@@ -17,12 +17,14 @@ describe Fastlane do
       allow(helper).to receive(:trigger)
 
       FileUtils.mkdir_p(output)
-      FileUtils.touch(File.join(output, 'screen.png'))
-      expect(described_class.run(capture_command: 'shell capture {{serial}} {{output_directory}}', output_directory: output, serial: '', serials: %w[device-a device-b], screenshot_glob: '**/*.png', hdc_path: 'hdc')).to be(true)
+      %w[en-US zh-CN].each { |locale| FileUtils.mkdir_p(File.join(output, locale, 'device-a')) }
+      FileUtils.touch(File.join(output, 'en-US', 'device-a', 'screen.png'))
+      expect(described_class.run(capture_command: 'shell capture {{serial}} {{locale}} {{output_directory}}', output_directory: output, serial: '', serials: %w[device-a device-b], locales: %w[en-US zh-CN], screenshot_glob: '**/*.png', hdc_path: 'hdc')).to be(true)
       expect(Fastlane::Actions.lane_context[Fastlane::Actions::SharedValues::HARMONYOS_SCREENSHOTS_PATH]).to eq(output)
-      expect(Fastlane::Actions.lane_context[Fastlane::Actions::SharedValues::HARMONYOS_SCREENSHOT_PATHS]).to eq([File.join(output, 'screen.png')])
-      expect(helper).to have_received(:trigger).with(command: "shell capture device-a #{output}", serial: 'device-a')
-      expect(helper).to have_received(:trigger).with(command: "shell capture device-b #{output}", serial: 'device-b')
+      expect(Fastlane::Actions.lane_context[Fastlane::Actions::SharedValues::HARMONYOS_SCREENSHOT_PATHS]).to eq([File.join(output, 'en-US', 'device-a', 'screen.png')])
+      expect(Fastlane::Actions.lane_context[Fastlane::Actions::SharedValues::HARMONYOS_SCREENSHOTS_BY_VARIANT]['en-US/device-a']).to eq([File.join(output, 'en-US', 'device-a', 'screen.png')])
+      expect(helper).to have_received(:trigger).with(command: "shell capture device-a en-US #{File.join(output, 'en-US', 'device-a')}", serial: 'device-a')
+      expect(helper).to have_received(:trigger).with(command: "shell capture device-b zh-CN #{File.join(output, 'zh-CN', 'device-b')}", serial: 'device-b')
     ensure
       FileUtils.remove_entry(directory) if directory && File.exist?(directory)
     end
