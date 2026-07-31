@@ -30,6 +30,22 @@ describe Fastlane do
       ensure
         FileUtils.remove_entry(directory) if directory && File.exist?(directory)
       end
+
+      it 'builds the minimal HarmonyOS fixture in its project directory' do
+        source = File.expand_path('../fixtures/harmonyos/minimal_app', __dir__)
+        directory = Dir.mktmpdir
+        FileUtils.cp_r("#{source}/.", directory)
+        wrapper = File.join(directory, 'hvigorw')
+        FileUtils.chmod('+x', wrapper)
+
+        Fastlane::FastFile.new.parse("lane :build do
+          build_harmonyos_app(project_dir: '#{directory}', hvigor_path: './hvigorw')
+        end").runner.execute(:build, :harmonyos)
+
+        expect(Fastlane::Actions.lane_context[Fastlane::Actions::SharedValues::HARMONYOS_HAP_OUTPUT_PATH]).to eq(File.join(directory, 'entry/build/default/outputs/default/entry-default-signed.hap'))
+      ensure
+        FileUtils.remove_entry(directory) if directory && File.exist?(directory)
+      end
     end
   end
 end

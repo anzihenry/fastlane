@@ -1,0 +1,4 @@
+#!/bin/sh
+
+mkdir -p entry/build/default/outputs/default
+touch entry/build/default/outputs/default/entry-default-signed.hap

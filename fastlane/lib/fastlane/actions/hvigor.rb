@@ -32,7 +32,9 @@ module Fastlane
 
         Actions.lane_context[SharedValues::HARMONYOS_PRODUCT] = params[:product] if params[:product]
         Actions.lane_context[SharedValues::HARMONYOS_BUILD_MODE] = params[:build_mode] if params[:build_mode]
-        result = Action.sh(command, print_command: params[:print_command], print_command_output: params[:print_command_output])
+        result = Dir.chdir(project_dir) do
+          Action.sh(command, print_command: params[:print_command], print_command_output: params[:print_command_output])
+        end
 
         discover_artifacts(project_dir, params[:artifact_glob])
         result
