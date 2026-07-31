@@ -87,6 +87,24 @@ and update the caller-supplied `file_info`. Keep `submit_for_review` disabled;
 `get_appgallery_version` to retrieve package information into
 `APPGALLERY_FILE_INFO` before submitting.
 
+## App and package management
+
+Use `get_appgallery_app_ids` to map one or more HarmonyOS package names to
+AppGallery Connect app IDs. It defaults to AppGallery package type `7`, the
+HarmonyOS APP type. `get_appgallery_app_info` and
+`update_appgallery_app_info` respectively retrieve and update only the
+caller-supplied application fields. Neither action creates an application or
+submits a release.
+
+`download_from_appgallery` downloads a package from an explicit,
+AppGallery-provided URL and exposes `APPGALLERY_DOWNLOADED_PACKAGE_PATH`. It
+does not enumerate private download URLs or persist credentials.
+
+Creating applications is intentionally not automated yet. The required
+HarmonyOS creation API differs across AppGallery Connect product generations;
+it should be added only after a real test application confirms the endpoint,
+required fields, and role permissions.
+
 ## Screenshot contract
 
 `capture_harmonyos_screenshots` accepts a project-specific HDC capture command
