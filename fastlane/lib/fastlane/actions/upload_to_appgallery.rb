@@ -21,6 +21,7 @@ module Fastlane
 
         if params[:submit_for_review]
           UI.user_error!('`app_id` is required when `submit_for_review` is true') if params[:app_id].to_s.empty?
+          UI.important('Submitting an AppGallery release from upload_to_appgallery is deprecated; use submit_to_appgallery in a separate lane step instead.')
           client.submit(params[:app_id])
         end
 

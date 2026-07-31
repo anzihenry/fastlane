@@ -44,4 +44,18 @@ describe Fastlane do
       FileUtils.remove_entry(File.dirname(package)) if package && File.exist?(File.dirname(package))
     end
   end
+
+  describe Fastlane::Actions::SubmitToAppgalleryAction do
+    it 'submits a release only through the dedicated action' do
+      response = { 'ret' => { 'code' => 0 } }
+      client = instance_double(Fastlane::Helper::AppgalleryClient, submit: response)
+      allow(Fastlane::Helper::AppgalleryClient).to receive(:new).and_return(client)
+
+      result = described_class.run(app_id: 'app', api_base: 'https://api.example.test', access_token: 'token', client_id: 'client')
+
+      expect(client).to have_received(:submit).with('app')
+      expect(result).to eq(response)
+      expect(Fastlane::Actions.lane_context[Fastlane::Actions::SharedValues::APPGALLERY_SUBMIT_RESPONSE]).to eq(response)
+    end
+  end
 end

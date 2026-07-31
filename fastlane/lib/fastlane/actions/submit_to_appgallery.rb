@@ -3,23 +3,23 @@ require 'fastlane/helper/appgallery_client'
 module Fastlane
   module Actions
     module SharedValues
-      APPGALLERY_FILE_INFO = :APPGALLERY_FILE_INFO
+      APPGALLERY_SUBMIT_RESPONSE = :APPGALLERY_SUBMIT_RESPONSE
     end
 
-    class GetAppgalleryVersionAction < Action
+    class SubmitToAppgalleryAction < Action
       def self.run(params)
         client = Helper::AppgalleryClient.new(api_base: params[:api_base], access_token: params[:access_token], client_id: params[:client_id])
-        response = client.app_file_info(params[:app_id])
-        Actions.lane_context[SharedValues::APPGALLERY_FILE_INFO] = response
+        response = client.submit(params[:app_id])
+        Actions.lane_context[SharedValues::APPGALLERY_SUBMIT_RESPONSE] = response
         response
       end
 
       def self.description
-        'Fetch AppGallery Connect package information for a HarmonyOS app'
+        'Explicitly submit a configured HarmonyOS AppGallery release for review'
       end
 
-      def self.output
-        [['APPGALLERY_FILE_INFO', 'Package and file information returned by AppGallery Connect']]
+      def self.details
+        'Call this only after uploading the package and updating AppGallery file information. AppGallery processes packages asynchronously, so a newly uploaded package may not be ready for submission immediately.'
       end
 
       def self.available_options
@@ -29,6 +29,10 @@ module Fastlane
           FastlaneCore::ConfigItem.new(key: :access_token, env_name: 'FL_APPGALLERY_ACCESS_TOKEN', description: 'AppGallery Connect API access token', sensitive: true),
           FastlaneCore::ConfigItem.new(key: :client_id, env_name: 'FL_APPGALLERY_CLIENT_ID', description: 'AppGallery Connect API client ID', sensitive: true)
         ]
+      end
+
+      def self.output
+        [['APPGALLERY_SUBMIT_RESPONSE', 'Response returned by AppGallery Connect when the release is submitted']]
       end
 
       def self.is_supported?(platform)
