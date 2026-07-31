@@ -27,5 +27,21 @@ describe Fastlane do
     ensure
       FileUtils.remove_entry(File.dirname(package)) if package && File.exist?(File.dirname(package))
     end
+
+    it 'obtains an upload URL and updates file information when requested' do
+      package = File.join(Dir.mktmpdir, 'entry.hap')
+      FileUtils.touch(package)
+      file_info = { 'fileType' => 5, 'files' => [{ 'fileName' => 'entry.hap' }] }
+      client = instance_double(Fastlane::Helper::AppgalleryClient, upload_url: 'https://upload.example.test/generated', upload_file: instance_double(Net::HTTPOK, body: 'ok'), update_app_file_info: {})
+      allow(Fastlane::Helper::AppgalleryClient).to receive(:new).and_return(client)
+
+      described_class.run(upload_url: nil, package_path: package, api_base: 'https://api.example.test', access_token: 'token', client_id: 'client', app_id: 'app', file_info: file_info, submit_for_review: false)
+
+      expect(client).to have_received(:upload_url).with('app', 'hap')
+      expect(client).to have_received(:upload_file).with('https://upload.example.test/generated', package)
+      expect(client).to have_received(:update_app_file_info).with('app', file_info)
+    ensure
+      FileUtils.remove_entry(File.dirname(package)) if package && File.exist?(File.dirname(package))
+    end
   end
 end

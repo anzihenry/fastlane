@@ -9,8 +9,15 @@ module Fastlane
         UI.user_error!("Couldn't find HarmonyOS package at path '#{package_path}'") unless File.file?(package_path)
 
         client = Helper::AppgalleryClient.new(api_base: params[:api_base], access_token: params[:access_token], client_id: params[:client_id])
-        response = client.upload_file(params[:upload_url], package_path)
+        upload_url = params[:upload_url]
+        if upload_url.to_s.empty?
+          UI.user_error!('`app_id` is required when `upload_url` is not provided') if params[:app_id].to_s.empty?
+          upload_url = client.upload_url(params[:app_id], File.extname(package_path).delete_prefix('.'))
+        end
+        response = client.upload_file(upload_url, package_path)
         UI.success("Uploaded #{File.basename(package_path)} to AppGallery Connect")
+
+        client.update_app_file_info(params[:app_id], params[:file_info]) if params[:file_info]
 
         if params[:submit_for_review]
           UI.user_error!('`app_id` is required when `submit_for_review` is true') if params[:app_id].to_s.empty?
@@ -30,12 +37,13 @@ module Fastlane
 
       def self.available_options
         [
-          FastlaneCore::ConfigItem.new(key: :upload_url, env_name: 'FL_APPGALLERY_UPLOAD_URL', description: 'Pre-signed AppGallery Connect URL for this package', verify_block: proc { |value| UI.user_error!('No AppGallery upload URL provided') if value.to_s.empty? }),
+          FastlaneCore::ConfigItem.new(key: :upload_url, env_name: 'FL_APPGALLERY_UPLOAD_URL', description: 'Pre-signed AppGallery Connect URL for this package; obtained automatically when omitted', optional: true),
           FastlaneCore::ConfigItem.new(key: :package_path, env_name: 'FL_HARMONYOS_PACKAGE_PATH', description: 'Path to a HAP or APP package', optional: true),
           FastlaneCore::ConfigItem.new(key: :api_base, env_name: 'FL_APPGALLERY_API_BASE', description: 'AppGallery Connect API base URL', default_value: Helper::AppgalleryClient::DEFAULT_API_BASE),
           FastlaneCore::ConfigItem.new(key: :access_token, env_name: 'FL_APPGALLERY_ACCESS_TOKEN', description: 'AppGallery Connect API access token', sensitive: true, optional: true),
           FastlaneCore::ConfigItem.new(key: :client_id, env_name: 'FL_APPGALLERY_CLIENT_ID', description: 'AppGallery Connect API client ID', sensitive: true, optional: true),
           FastlaneCore::ConfigItem.new(key: :app_id, env_name: 'FL_APPGALLERY_APP_ID', description: 'AppGallery Connect application ID', optional: true),
+          FastlaneCore::ConfigItem.new(key: :file_info, env_name: 'FL_APPGALLERY_FILE_INFO', description: 'AppGallery Connect file information JSON to update after upload', optional: true, type: Hash),
           FastlaneCore::ConfigItem.new(key: :submit_for_review, env_name: 'FL_APPGALLERY_SUBMIT_FOR_REVIEW', description: 'Submit a configured release after upload', type: Boolean, default_value: false)
         ]
       end
