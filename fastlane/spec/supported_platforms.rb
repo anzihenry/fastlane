@@ -1,8 +1,8 @@
 describe Fastlane do
   describe Fastlane::Action do
     describe "#all" do
-      it "Contains 3 default supported platforms" do
-        expect(Fastlane::SupportedPlatforms.all.count).to eq(3)
+      it "Contains 4 default supported platforms" do
+        expect(Fastlane::SupportedPlatforms.all.count).to eq(4)
       end
     end
     describe "#extra=" do
@@ -17,7 +17,7 @@ describe Fastlane do
       it "doesn't break if you pass nil" do
         expect(FastlaneCore::UI).to receive(:important).with("Setting '[]' as extra SupportedPlatforms")
         Fastlane::SupportedPlatforms.extra = nil
-        expect(Fastlane::SupportedPlatforms.all.count).to eq(3)
+        expect(Fastlane::SupportedPlatforms.all.count).to eq(4)
       end
     end
   end

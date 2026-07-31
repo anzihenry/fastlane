@@ -11,7 +11,7 @@ module Fastlane
       end
     end
 
-    @default = [:ios, :mac, :android]
+    @default = [:ios, :mac, :android, :harmonyos]
     @extra = []
 
     def self.all
