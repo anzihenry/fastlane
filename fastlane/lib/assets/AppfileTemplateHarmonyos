@@ -1,0 +1,2 @@
+# HarmonyOS project settings belong in build-profile.json5 and agconnect-services.json.
+# Store AppGallery Connect credentials in your CI secret manager rather than this file.

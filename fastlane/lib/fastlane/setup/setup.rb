@@ -54,7 +54,7 @@ module Fastlane
       # this is used by e.g. configuration.rb to not show warnings when running produce
       ENV["FASTLANE_ONBOARDING_IN_PROCESS"] = 1.to_s
 
-      spinner = TTY::Spinner.new("[:spinner] Looking for iOS and Android projects in current directory...", format: :dots)
+      spinner = TTY::Spinner.new("[:spinner] Looking for iOS, Android, and HarmonyOS projects in current directory...", format: :dots)
       spinner.auto_spin
 
       ios_projects = Dir["**/*.xcodeproj"] + Dir["**/*.xcworkspace"]
@@ -63,14 +63,14 @@ module Fastlane
       end
       ios_projects.delete_if { |path| path.match("fastlane/swift/FastlaneSwiftRunner/FastlaneSwiftRunner.xcodeproj") }
       android_projects = Dir["**/*.gradle"] + Dir["**/*.gradle.kts"]
+      harmonyos_projects = Dir['**/build-profile.json5'] + Dir['**/hvigorfile.ts'] + Dir['**/oh-package.json5']
 
       spinner.success
 
       FastlaneCore::FastlaneFolder.create_folder!
 
       # Currently we prefer iOS app projects, as the `init` process is
-      # more intelligent and does more things. The user can easily add
-      # the `:android` platform to the resulting Fastfile
+      # more intelligent and does more things.
       if ios_projects.count > 0
         current_directory = ios_projects.find_all do |current_project_path|
           current_project_path.split(File::Separator).count == 1
@@ -113,9 +113,12 @@ module Fastlane
       elsif android_projects.count > 0
         UI.message("Detected an Android project in the current directory...")
         SetupAndroid.new.setup_android
+      elsif harmonyos_projects.count > 0
+        UI.message("Detected a HarmonyOS project in the current directory...")
+        SetupHarmonyos.new.setup_harmonyos
       else
-        UI.error("No iOS or Android projects were found in directory '#{Dir.pwd}'")
-        UI.error("Make sure to `cd` into the directory containing your iOS or Android app")
+        UI.error("No iOS, Android, or HarmonyOS projects were found in directory '#{Dir.pwd}'")
+        UI.error("Make sure to `cd` into the directory containing your app")
         if UI.confirm("Alternatively, would you like to manually setup a fastlane config in the current directory instead?")
           SetupIos.new(
             is_swift_fastfile: is_swift_fastfile,
@@ -305,8 +308,10 @@ module Fastlane
         else
           path = "#{Fastlane::ROOT}/lib/assets/AppfileTemplate"
         end
-      else
+      elsif self.platform == :android
         path = "#{Fastlane::ROOT}/lib/assets/AppfileTemplateAndroid"
+      else
+        path = "#{Fastlane::ROOT}/lib/assets/AppfileTemplateHarmonyos"
       end
 
       return File.read(path)
@@ -339,6 +344,10 @@ module Fastlane
         UI.message("\t\thttps://docs.fastlane.tools/getting-started/android/beta-deployment/".cyan)
         UI.message("🚀  Learn more about how to automate the Google Play release process:")
         UI.message("\t\thttps://docs.fastlane.tools/getting-started/android/release-deployment/".cyan)
+      elsif self.platform == :harmonyos
+        UI.message("📱  Use `hvigor` and `build_harmonyos_app` to build HAP/APP artifacts.")
+        UI.message("🚀  Use `upload_to_appgallery` with an AppGallery Connect upload URL to publish artifacts.")
+        UI.message("🔌  Use `hdc` and `hdc_devices` to automate connected devices.")
       else
         UI.message("📸  Learn more about how to automatically generate localized App Store screenshots:")
         UI.message("\t\thttps://docs.fastlane.tools/getting-started/ios/screenshots/".cyan)
@@ -366,3 +375,4 @@ end
 
 require 'fastlane/setup/setup_ios'
 require 'fastlane/setup/setup_android'
+require 'fastlane/setup/setup_harmonyos'

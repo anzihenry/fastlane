@@ -57,15 +57,18 @@ finishes successfully but no application artifact is found.
 ## AppGallery Connect contract
 
 AppGallery Connect publication contains multiple state-changing operations:
-uploading a package, updating version/file information, and submitting a
-release. `upload_to_appgallery` therefore defaults to uploading only. A caller
-must explicitly set `submit_for_review: true` to submit a release.
+obtaining an upload URL, uploading a package, updating version/file
+information, and submitting a release. `upload_to_appgallery` receives the
+pre-signed upload URL and defaults to uploading only. A caller must explicitly
+set `submit_for_review: true` to submit a release that has already had its
+file information configured.
 
-The action will use a small HTTP client with an injectable endpoint and token
-provider. Credentials are read from parameters or environment variables and
-are never logged. API endpoint versions, package formats, and asynchronous
-processing states vary by AppGallery Connect product and region, so the first
-release supports only the documented upload path covered by integration tests.
+The actions use a small HTTP client with an injectable endpoint. Credentials
+are read from parameters or environment variables and are never logged. API
+endpoint versions, package formats, and asynchronous processing states vary by
+AppGallery Connect product and region, so retrieval of pre-signed URLs and
+updates to file information remain explicit CI responsibilities in this first
+release.
 
 ## Non-goals for the first release
 
