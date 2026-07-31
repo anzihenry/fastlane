@@ -4,7 +4,7 @@ describe Fastlane do
       package = File.join(Dir.mktmpdir, 'entry.hap')
       FileUtils.touch(package)
       Fastlane::Actions.lane_context[Fastlane::Actions::SharedValues::HARMONYOS_HAP_OUTPUT_PATH] = package
-      client = instance_double(Fastlane::Helper::AppgalleryClient, upload_file: instance_double(Net::HTTPOK, body: 'ok'))
+      client = instance_double(Fastlane::Helper::AppgalleryClient, upload_file: instance_double(Net::HTTPOK, body: 'ok'), submit: nil)
       allow(Fastlane::Helper::AppgalleryClient).to receive(:new).and_return(client)
 
       result = described_class.run(upload_url: 'https://upload.example.test/package', package_path: nil, api_base: 'https://api.example.test', access_token: nil, client_id: nil, app_id: nil, submit_for_review: false)
@@ -18,7 +18,7 @@ describe Fastlane do
     it 'submits only when explicitly requested' do
       package = File.join(Dir.mktmpdir, 'entry.hap')
       FileUtils.touch(package)
-      client = instance_double(Fastlane::Helper::AppgalleryClient, upload_file: instance_double(Net::HTTPOK, body: 'ok'))
+      client = instance_double(Fastlane::Helper::AppgalleryClient, upload_file: instance_double(Net::HTTPOK, body: 'ok'), submit: nil)
       allow(Fastlane::Helper::AppgalleryClient).to receive(:new).and_return(client)
 
       described_class.run(upload_url: 'https://upload.example.test/package', package_path: package, api_base: 'https://api.example.test', access_token: 'token', client_id: 'client', app_id: 'app', submit_for_review: true)

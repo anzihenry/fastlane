@@ -7,7 +7,7 @@ describe Fastlane do
     end
     describe "#extra=" do
       after :each do
-        Fastlane::SupportedPlatforms.extra = []
+        Fastlane::SupportedPlatforms.instance_variable_set(:@extra, [])
       end
       it "allows to add new platforms the list of supported ones" do
         expect(FastlaneCore::UI).to receive(:important).with("Setting '[:abcdef]' as extra SupportedPlatforms")

@@ -2,16 +2,20 @@ describe Fastlane do
   describe Fastlane::FastFile do
     describe 'hvigor' do
       it 'runs an Hvigor task with product and build mode properties' do
-        result = Fastlane::FastFile.new.parse("lane :build do
-          hvigor(task: 'assembleApp', product: 'default', build_mode: 'release', hvigor_path: './README.md')
+        result = Fastlane::FastFile.new.parse("platform :harmonyos do
+          lane :build do
+            hvigor(task: 'assembleApp', product: 'default', build_mode: 'release', hvigor_path: './README.md')
+          end
         end").runner.execute(:build, :harmonyos)
 
-        expect(result).to eq("#{File.expand_path('README.md').shellescape} --mode project -p product\\=default -p buildMode\\=release assembleApp")
+        expect(result).to eq("#{File.expand_path('fastlane/README.md').shellescape} --mode project -p product\\=default -p buildMode\\=release assembleApp")
       end
 
       it 'uses assembleApp for build_harmonyos_app' do
-        result = Fastlane::FastFile.new.parse("lane :build do
-          build_harmonyos_app(hvigor_path: './README.md')
+        result = Fastlane::FastFile.new.parse("platform :harmonyos do
+          lane :build do
+            build_harmonyos_app(hvigor_path: './README.md')
+          end
         end").runner.execute(:build, :harmonyos)
 
         expect(result).to include('assembleApp')
@@ -37,9 +41,12 @@ describe Fastlane do
         FileUtils.cp_r("#{source}/.", directory)
         wrapper = File.join(directory, 'hvigorw')
         FileUtils.chmod('+x', wrapper)
+        expect(Dir.chdir(directory) { system('./hvigorw', 'assembleApp') }).to be(true)
 
-        Fastlane::FastFile.new.parse("lane :build do
-          build_harmonyos_app(project_dir: '#{directory}', hvigor_path: './hvigorw')
+        Fastlane::FastFile.new.parse("platform :harmonyos do
+          lane :build do
+            build_harmonyos_app(project_dir: '#{directory}', hvigor_path: './hvigorw')
+          end
         end").runner.execute(:build, :harmonyos)
 
         expect(Fastlane::Actions.lane_context[Fastlane::Actions::SharedValues::HARMONYOS_HAP_OUTPUT_PATH]).to eq(File.join(directory, 'entry/build/default/outputs/default/entry-default-signed.hap'))
