@@ -70,6 +70,31 @@ AppGallery Connect product and region, so retrieval of pre-signed URLs and
 updates to file information remain explicit CI responsibilities in this first
 release.
 
+The upload and release steps are deliberately separate:
+
+```ruby
+upload_to_appgallery(
+  app_id: ENV['APPGALLERY_APP_ID'],
+  file_info: { 'fileType' => 5, 'files' => [{ 'fileName' => 'entry.hap' }] }
+)
+submit_to_appgallery(app_id: ENV['APPGALLERY_APP_ID'])
+```
+
+When `upload_url` is omitted, `upload_to_appgallery` obtains a temporary URL
+from AppGallery Connect. It can then upload the HAP/APP found in lane context
+and update the caller-supplied `file_info`. Keep `submit_for_review` disabled;
+`submit_to_appgallery` is the preferred explicit release step. Use
+`get_appgallery_version` to retrieve package information into
+`APPGALLERY_FILE_INFO` before submitting.
+
+## Screenshot contract
+
+`capture_harmonyos_screenshots` accepts a project-specific HDC capture command
+and runs it for one or more device serials. The command can contain
+`{{serial}}` and `{{output_directory}}` placeholders. It exposes both
+`HARMONYOS_SCREENSHOTS_PATH` and `HARMONYOS_SCREENSHOT_PATHS`, so later lanes
+can frame, archive, or upload the resulting images.
+
 ## Non-goals for the first release
 
 - Generating or managing HarmonyOS signing certificates and profiles.

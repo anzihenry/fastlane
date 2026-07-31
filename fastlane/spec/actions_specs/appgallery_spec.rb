@@ -58,4 +58,15 @@ describe Fastlane do
       expect(Fastlane::Actions.lane_context[Fastlane::Actions::SharedValues::APPGALLERY_SUBMIT_RESPONSE]).to eq(response)
     end
   end
+
+  describe Fastlane::Actions::GetAppgalleryVersionAction do
+    it 'stores package information in lane context' do
+      response = { 'data' => [{ 'versionName' => '1.0.0' }] }
+      client = instance_double(Fastlane::Helper::AppgalleryClient, app_file_info: response)
+      allow(Fastlane::Helper::AppgalleryClient).to receive(:new).and_return(client)
+
+      expect(described_class.run(app_id: 'app', api_base: 'https://api.example.test', access_token: 'token', client_id: 'client')).to eq(response)
+      expect(Fastlane::Actions.lane_context[Fastlane::Actions::SharedValues::APPGALLERY_FILE_INFO]).to eq(response)
+    end
+  end
 end
