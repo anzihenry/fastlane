@@ -69,4 +69,28 @@ describe Fastlane do
       expect(Fastlane::Actions.lane_context[Fastlane::Actions::SharedValues::APPGALLERY_FILE_INFO]).to eq(response)
     end
   end
+
+  describe Fastlane::Actions::GetAppgalleryAppInfoAction do
+    it 'stores app information in lane context' do
+      response = { 'data' => { 'appName' => 'Demo' } }
+      client = instance_double(Fastlane::Helper::AppgalleryClient, app_info: response)
+      allow(Fastlane::Helper::AppgalleryClient).to receive(:new).and_return(client)
+
+      expect(described_class.run(app_id: 'app', api_base: 'https://api.example.test', access_token: 'token', client_id: 'client', lang: 'en-US', release_type: nil)).to eq(response)
+      expect(client).to have_received(:app_info).with('app', lang: 'en-US', release_type: nil)
+      expect(Fastlane::Actions.lane_context[Fastlane::Actions::SharedValues::APPGALLERY_APP_INFO]).to eq(response)
+    end
+  end
+
+  describe Fastlane::Actions::UpdateAppgalleryAppInfoAction do
+    it 'updates only the provided application fields' do
+      app_info = { 'privacyPolicy' => 'https://example.test/privacy' }
+      client = instance_double(Fastlane::Helper::AppgalleryClient, update_app_info: { 'ret' => { 'code' => 0 } })
+      allow(Fastlane::Helper::AppgalleryClient).to receive(:new).and_return(client)
+
+      described_class.run(app_id: 'app', api_base: 'https://api.example.test', access_token: 'token', client_id: 'client', app_info: app_info)
+
+      expect(client).to have_received(:update_app_info).with('app', app_info)
+    end
+  end
 end
