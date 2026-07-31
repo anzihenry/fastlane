@@ -82,6 +82,18 @@ describe Fastlane do
     end
   end
 
+  describe Fastlane::Actions::GetAppgalleryAppIdsAction do
+    it 'looks up AppGallery IDs for HarmonyOS package names' do
+      response = { 'data' => [{ 'appId' => '123' }] }
+      client = instance_double(Fastlane::Helper::AppgalleryClient, app_ids: response)
+      allow(Fastlane::Helper::AppgalleryClient).to receive(:new).and_return(client)
+
+      expect(described_class.run(api_base: 'https://api.example.test', access_token: 'token', client_id: 'client', package_names: ['com.example.demo'], package_types: [7])).to eq(response)
+      expect(client).to have_received(:app_ids).with(['com.example.demo'], package_types: [7])
+      expect(Fastlane::Actions.lane_context[Fastlane::Actions::SharedValues::APPGALLERY_APP_IDS]).to eq(response)
+    end
+  end
+
   describe Fastlane::Actions::UpdateAppgalleryAppInfoAction do
     it 'updates only the provided application fields' do
       app_info = { 'privacyPolicy' => 'https://example.test/privacy' }
