@@ -93,4 +93,18 @@ describe Fastlane do
       expect(client).to have_received(:update_app_info).with('app', app_info)
     end
   end
+
+  describe Fastlane::Actions::DownloadFromAppgalleryAction do
+    it 'stores the downloaded package path in lane context' do
+      output_path = File.join(Dir.mktmpdir, 'app.hap')
+      client = instance_double(Fastlane::Helper::AppgalleryClient, download_file: output_path)
+      allow(Fastlane::Helper::AppgalleryClient).to receive(:new).and_return(client)
+
+      expect(described_class.run(download_url: 'https://download.example.test/app.hap', output_path: output_path)).to eq(output_path)
+      expect(client).to have_received(:download_file).with('https://download.example.test/app.hap', output_path)
+      expect(Fastlane::Actions.lane_context[Fastlane::Actions::SharedValues::APPGALLERY_DOWNLOADED_PACKAGE_PATH]).to eq(output_path)
+    ensure
+      FileUtils.remove_entry(File.dirname(output_path)) if output_path && File.exist?(File.dirname(output_path))
+    end
+  end
 end

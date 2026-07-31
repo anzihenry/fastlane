@@ -44,6 +44,17 @@ module Fastlane
         request_json(:put, "/publish/v2/app-info?appId=#{URI.encode_www_form_component(app_id)}", body: app_info)
       end
 
+      def download_file(download_url, output_path)
+        uri = URI.parse(download_url)
+        response = Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == 'https') do |http|
+          http.request(Net::HTTP::Get.new(uri.request_uri))
+        end
+        UI.user_error!("AppGallery package download failed (#{response.code}): #{response.body}") unless response.is_a?(Net::HTTPSuccess)
+
+        File.binwrite(output_path, response.body)
+        output_path
+      end
+
       def submit(app_id)
         request_json(:post, "/publish/v2/app-submit?appid=#{URI.encode_www_form_component(app_id)}")
       end
