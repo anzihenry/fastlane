@@ -108,6 +108,17 @@ describe Fastlane do
       expect(request).to have_been_requested.once
     end
 
+    it 'refreshes package information through the v3 package endpoint' do
+      package_info = { 'fileName' => 'demo.app', 'objectId' => 'CN/demo.app' }
+      request = stub_request(:put, 'https://connect-api.cloud.huawei.com/api/publish/v3/app-package-info?appId=app&releaseType=1&releasePhase=0').
+                with(body: package_info.to_json).
+                to_return(status: 200, body: { ret: { code: 0 }, packageId: 'package' }.to_json)
+      client = described_class.new(access_token: 'supplied-token', client_id: 'client')
+
+      expect(client.update_app_package_info('app', package_info, release_type: 1, release_phase: 0)).to include('packageId' => 'package')
+      expect(request).to have_been_requested.once
+    end
+
     it 'queries the v3 HarmonyOS version list with the app ID header' do
       request = stub_request(:post, 'https://connect-api.cloud.huawei.com/api/publish/v3/version/brief-info/list').
                 with(
@@ -201,7 +212,7 @@ describe Fastlane do
       client = instance_double(Fastlane::Helper::AppgalleryClient, upload_file: instance_double(Net::HTTPOK, body: 'ok'), submit: nil)
       allow(Fastlane::Helper::AppgalleryClient).to receive(:new).and_return(client)
 
-      result = described_class.run(upload_url: 'https://upload.example.test/package', package_path: nil, api_base: 'https://api.example.test', access_token: nil, client_id: nil, app_id: nil, submit_for_review: false)
+      result = described_class.run(upload_url: 'https://upload.example.test/package', package_path: nil, api_base: 'https://api.example.test', access_token: nil, client_id: nil, app_id: nil, file_info: nil, release_type: nil, release_phase: nil, chinese_mainland_flag: nil, submit_for_review: false)
 
       expect(client).to have_received(:upload_file).with('https://upload.example.test/package', package)
       expect(result).to eq('ok')
@@ -215,7 +226,7 @@ describe Fastlane do
       client = instance_double(Fastlane::Helper::AppgalleryClient, upload_file: instance_double(Net::HTTPOK, body: 'ok'), submit: nil)
       allow(Fastlane::Helper::AppgalleryClient).to receive(:new).and_return(client)
 
-      described_class.run(upload_url: 'https://upload.example.test/package', package_path: package, api_base: 'https://api.example.test', access_token: 'token', client_id: 'client', app_id: 'app', submit_for_review: true)
+      described_class.run(upload_url: 'https://upload.example.test/package', package_path: package, api_base: 'https://api.example.test', access_token: 'token', client_id: 'client', app_id: 'app', file_info: nil, release_type: nil, release_phase: nil, chinese_mainland_flag: nil, submit_for_review: true)
 
       expect(client).to have_received(:submit).with('app')
     ensure
@@ -225,15 +236,16 @@ describe Fastlane do
     it 'obtains an upload URL and updates file information when requested' do
       package = File.join(Dir.mktmpdir, 'entry.hap')
       FileUtils.touch(package)
-      file_info = { 'fileType' => 5, 'files' => [{ 'fileName' => 'entry.hap' }] }
-      client = instance_double(Fastlane::Helper::AppgalleryClient, upload_url: 'https://upload.example.test/generated', upload_file: instance_double(Net::HTTPOK, body: 'ok'), update_app_file_info: {})
+      upload_info = { 'objectId' => 'CN/entry.hap' }
+      response = { 'ret' => { 'code' => 0 }, 'packageId' => 'package' }
+      client = instance_double(Fastlane::Helper::AppgalleryClient, upload_asset: upload_info, update_app_package_info: response)
       allow(Fastlane::Helper::AppgalleryClient).to receive(:new).and_return(client)
 
-      described_class.run(upload_url: nil, package_path: package, api_base: 'https://api.example.test', access_token: 'token', client_id: 'client', app_id: 'app', file_info: file_info, submit_for_review: false)
+      result = described_class.run(upload_url: nil, package_path: package, api_base: 'https://api.example.test', access_token: 'token', client_id: 'client', app_id: 'app', file_info: nil, release_type: 1, release_phase: 0, chinese_mainland_flag: nil, submit_for_review: false)
 
-      expect(client).to have_received(:upload_url).with('app', 'hap')
-      expect(client).to have_received(:upload_file).with('https://upload.example.test/generated', package)
-      expect(client).to have_received(:update_app_file_info).with('app', file_info)
+      expect(client).to have_received(:upload_asset).with('app', package, chinese_mainland_flag: nil)
+      expect(client).to have_received(:update_app_package_info).with('app', { 'fileName' => 'entry.hap', 'objectId' => 'CN/entry.hap' }, release_type: 1, release_phase: 0)
+      expect(result).to eq(response)
     ensure
       FileUtils.remove_entry(File.dirname(package)) if package && File.exist?(File.dirname(package))
     end

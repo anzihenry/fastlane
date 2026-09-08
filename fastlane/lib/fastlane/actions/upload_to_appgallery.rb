@@ -12,12 +12,14 @@ module Fastlane
         upload_url = params[:upload_url]
         if upload_url.to_s.empty?
           UI.user_error!('`app_id` is required when `upload_url` is not provided') if params[:app_id].to_s.empty?
-          upload_url = client.upload_url(params[:app_id], File.extname(package_path).delete_prefix('.'))
+          upload_info = client.upload_asset(params[:app_id], package_path, chinese_mainland_flag: params[:chinese_mainland_flag])
+          package_info = { 'fileName' => File.basename(package_path), 'objectId' => upload_info['objectId'] }.merge(params[:file_info] || {})
+          response = client.update_app_package_info(params[:app_id], package_info, release_type: params[:release_type], release_phase: params[:release_phase])
+        else
+          response = client.upload_file(upload_url, package_path)
+          response = client.update_app_package_info(params[:app_id], params[:file_info], release_type: params[:release_type], release_phase: params[:release_phase]) if params[:file_info]
         end
-        response = client.upload_file(upload_url, package_path)
         UI.success("Uploaded #{File.basename(package_path)} to AppGallery Connect")
-
-        client.update_app_file_info(params[:app_id], params[:file_info]) if params[:file_info]
 
         if params[:submit_for_review]
           UI.user_error!('`app_id` is required when `submit_for_review` is true') if params[:app_id].to_s.empty?
@@ -25,7 +27,7 @@ module Fastlane
           client.submit(params[:app_id])
         end
 
-        response.body
+        response.respond_to?(:body) ? response.body : response
       end
 
       def self.description
@@ -46,7 +48,10 @@ module Fastlane
           FastlaneCore::ConfigItem.new(key: :client_secret, env_name: 'FL_APPGALLERY_CLIENT_SECRET', description: 'AppGallery Connect API client secret used to obtain an access token', sensitive: true, optional: true),
           FastlaneCore::ConfigItem.new(key: :service_account_key_path, env_name: 'FL_APPGALLERY_SERVICE_ACCOUNT_KEY_PATH', description: 'Path to an AppGallery Connect Service Account JSON credential file', sensitive: true, optional: true),
           FastlaneCore::ConfigItem.new(key: :app_id, env_name: 'FL_APPGALLERY_APP_ID', description: 'AppGallery Connect application ID', optional: true),
-          FastlaneCore::ConfigItem.new(key: :file_info, env_name: 'FL_APPGALLERY_FILE_INFO', description: 'AppGallery Connect file information JSON to update after upload', optional: true, type: Hash),
+          FastlaneCore::ConfigItem.new(key: :file_info, env_name: 'FL_APPGALLERY_PACKAGE_INFO', description: 'Optional AppGallery package information fields merged with fileName and objectId', optional: true, type: Hash),
+          FastlaneCore::ConfigItem.new(key: :release_type, env_name: 'FL_APPGALLERY_RELEASE_TYPE', description: 'Release type; 1 is public release', type: Integer, optional: true),
+          FastlaneCore::ConfigItem.new(key: :release_phase, env_name: 'FL_APPGALLERY_RELEASE_PHASE', description: 'Release phase; 0 is full and 3 is phased', type: Integer, optional: true),
+          FastlaneCore::ConfigItem.new(key: :chinese_mainland_flag, env_name: 'FL_APPGALLERY_CHINESE_MAINLAND_FLAG', description: 'Whether the package is distributed in mainland China: 0 or 1', type: Integer, optional: true, verify_block: proc { |value| UI.user_error!('chinese_mainland_flag must be 0 or 1') unless [0, 1].include?(value) }),
           FastlaneCore::ConfigItem.new(key: :submit_for_review, env_name: 'FL_APPGALLERY_SUBMIT_FOR_REVIEW', description: 'Submit a configured release after upload', type: Boolean, default_value: false)
         ]
       end

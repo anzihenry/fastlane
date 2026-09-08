@@ -118,15 +118,16 @@ The upload and release steps are deliberately separate:
 ```ruby
 upload_to_appgallery(
   app_id: ENV['APPGALLERY_APP_ID'],
-  file_info: { 'fileType' => 5, 'files' => [{ 'fileName' => 'entry.hap' }] }
+  package_path: 'entry.app'
 )
 submit_to_appgallery(app_id: ENV['APPGALLERY_APP_ID'])
 ```
 
-When `upload_url` is omitted, `upload_to_appgallery` obtains a temporary URL
-from AppGallery Connect. It can then upload the HAP/APP found in lane context
-and update the caller-supplied `file_info`. Keep `submit_for_review` disabled;
-`submit_to_appgallery` is the preferred explicit release step.
+When `upload_url` is omitted, `upload_to_appgallery` obtains a temporary signed
+OBS URL from AppGallery Connect, uploads the HAP/APP found in lane context, and
+refreshes package information with the returned object ID. The response includes
+the `packageId` used for processing-status polling. Keep `submit_for_review`
+disabled; `submit_to_appgallery` is the preferred explicit release step.
 
 ## Release management
 

@@ -61,6 +61,11 @@ module Fastlane
         request_json(:put, "/publish/v3/app-file-info?#{URI.encode_www_form(query)}", body: file_info)
       end
 
+      def update_app_package_info(app_id, package_info, release_type: nil, release_phase: nil)
+        query = { 'appId' => app_id, 'releaseType' => release_type, 'releasePhase' => release_phase }.compact
+        request_json(:put, "/publish/v3/app-package-info?#{URI.encode_www_form(query)}", body: package_info)
+      end
+
       def app_file_info(app_id)
         request_json(:get, "/publish/v2/app-file-info?appid=#{URI.encode_www_form_component(app_id)}")
       end
