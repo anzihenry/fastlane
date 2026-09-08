@@ -62,7 +62,17 @@ module Fastlane
       end
 
       def update_app_info(app_id, app_info)
-        request_json(:put, "/publish/v2/app-info?appId=#{URI.encode_www_form_component(app_id)}", body: app_info)
+        request_json(:put, "/publish/v3/app-info?appId=#{URI.encode_www_form_component(app_id)}", body: app_info)
+      end
+
+      def update_language_info(app_id, language_info, release_type: nil, release_phase: nil)
+        query = { 'appId' => app_id, 'releaseType' => release_type, 'releasePhase' => release_phase }.compact
+        request_json(:put, "/publish/v3/app-language-info?#{URI.encode_www_form(query)}", body: language_info)
+      end
+
+      def delete_language_info(app_id, lang, release_type: nil)
+        query = { 'appId' => app_id, 'lang' => lang, 'releaseType' => release_type }.compact
+        request_json(:delete, "/publish/v2/app-language-info?#{URI.encode_www_form(query)}")
       end
 
       def download_file(download_url, output_path)
@@ -102,6 +112,7 @@ module Fastlane
         request = case method
                   when :post then Net::HTTP::Post.new(uri.request_uri)
                   when :put then Net::HTTP::Put.new(uri.request_uri)
+                  when :delete then Net::HTTP::Delete.new(uri.request_uri)
                   else Net::HTTP::Get.new(uri.request_uri)
                   end
         authentication_headers.each { |key, value| request[key] = value }

@@ -193,6 +193,34 @@ The action stores the resolved ID in `APPGALLERY_APP_ID` and fails with an
 actionable message when the console application does not exist or the response
 is ambiguous.
 
+Update global store settings and localized metadata separately. Both actions
+send only the fields supplied by the lane and do not submit a release:
+
+```ruby
+update_appgallery_app_info(
+  app_id: app_id,
+  app_info: {
+    'defaultLang' => 'en-US',
+    'privacyPolicy' => 'https://example.com/privacy',
+    'encrypted' => 0
+  }
+)
+
+update_appgallery_language_info(
+  app_id: app_id,
+  language_info: {
+    'lang' => 'en-US',
+    'appName' => 'Example',
+    'appDesc' => 'Long description',
+    'briefInfo' => 'Short description',
+    'newFeatures' => 'What changed'
+  }
+)
+```
+
+`delete_appgallery_language_info` removes a non-default language. AppGallery
+Connect does not allow deleting the application's default language.
+
 `download_from_appgallery` downloads a package from an explicit,
 AppGallery-provided URL and exposes `APPGALLERY_DOWNLOADED_PACKAGE_PATH`. It
 does not enumerate private download URLs or persist credentials.

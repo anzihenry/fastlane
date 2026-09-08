@@ -106,6 +106,25 @@ describe Fastlane do
       expect(request).to have_been_requested.once
     end
 
+    it 'updates basic and localized HarmonyOS metadata through current publishing endpoints' do
+      basic_request = stub_request(:put, 'https://connect-api.cloud.huawei.com/api/publish/v3/app-info?appId=app').
+                      with(body: { privacyPolicy: 'https://example.test/privacy' }.to_json).
+                      to_return(status: 200, body: { ret: { code: 0 } }.to_json)
+      language_request = stub_request(:put, 'https://connect-api.cloud.huawei.com/api/publish/v3/app-language-info?appId=app&releaseType=1&releasePhase=0').
+                         with(body: { lang: 'en-US', appName: 'Demo' }.to_json).
+                         to_return(status: 200, body: { ret: { code: 0 } }.to_json)
+      delete_request = stub_request(:delete, 'https://connect-api.cloud.huawei.com/api/publish/v2/app-language-info?appId=app&lang=fr-FR&releaseType=1').
+                       to_return(status: 200, body: { ret: { code: 0 } }.to_json)
+      client = described_class.new(access_token: 'supplied-token', client_id: 'client')
+
+      expect(client.update_app_info('app', 'privacyPolicy' => 'https://example.test/privacy')).to eq('ret' => { 'code' => 0 })
+      expect(client.update_language_info('app', { 'lang' => 'en-US', 'appName' => 'Demo' }, release_type: 1, release_phase: 0)).to eq('ret' => { 'code' => 0 })
+      expect(client.delete_language_info('app', 'fr-FR', release_type: 1)).to eq('ret' => { 'code' => 0 })
+      expect(basic_request).to have_been_requested.once
+      expect(language_request).to have_been_requested.once
+      expect(delete_request).to have_been_requested.once
+    end
+
     it 'updates phased release settings with the app ID header' do
       body = { 'versionId' => 'version', 'releasePhase' => 3, 'state' => 'SUSPEND', 'phaseDay' => 4 }
       request = stub_request(:put, 'https://connect-api.cloud.huawei.com/api/publish/v2/version/phased-release').
@@ -345,6 +364,35 @@ describe Fastlane do
       described_class.run(app_id: 'app', api_base: 'https://api.example.test', access_token: 'token', client_id: 'client', app_info: app_info)
 
       expect(client).to have_received(:update_app_info).with('app', app_info)
+    end
+  end
+
+  describe Fastlane::Actions::UpdateAppgalleryLanguageInfoAction do
+    it 'updates localized metadata and stores the response' do
+      language_info = { 'lang' => 'en-US', 'appName' => 'Demo' }
+      response = { 'ret' => { 'code' => 0 } }
+      client = instance_double(Fastlane::Helper::AppgalleryClient, update_language_info: response)
+      allow(Fastlane::Helper::AppgalleryClient).to receive(:new).and_return(client)
+
+      result = described_class.run(app_id: 'app', language_info: language_info, release_type: 1, release_phase: 0)
+
+      expect(client).to have_received(:update_language_info).with('app', language_info, release_type: 1, release_phase: 0)
+      expect(result).to eq(response)
+      expect(Fastlane::Actions.lane_context[Fastlane::Actions::SharedValues::APPGALLERY_LANGUAGE_INFO_RESPONSE]).to eq(response)
+    end
+  end
+
+  describe Fastlane::Actions::DeleteAppgalleryLanguageInfoAction do
+    it 'deletes non-default localized metadata and stores the response' do
+      response = { 'ret' => { 'code' => 0 } }
+      client = instance_double(Fastlane::Helper::AppgalleryClient, delete_language_info: response)
+      allow(Fastlane::Helper::AppgalleryClient).to receive(:new).and_return(client)
+
+      result = described_class.run(app_id: 'app', lang: 'fr-FR', release_type: 1)
+
+      expect(client).to have_received(:delete_language_info).with('app', 'fr-FR', release_type: 1)
+      expect(result).to eq(response)
+      expect(Fastlane::Actions.lane_context[Fastlane::Actions::SharedValues::APPGALLERY_DELETE_LANGUAGE_RESPONSE]).to eq(response)
     end
   end
 
