@@ -62,12 +62,12 @@ describe Fastlane do
     end
 
     it 'uses a provided access token without requesting another one' do
-      request = stub_request(:get, 'https://region.example.test/api/publish/v2/app-file-info?appid=app').
-                with(headers: { 'Authorization' => 'Bearer supplied-token', 'Client-Id' => 'client' }).
-                to_return(status: 200, body: { data: [] }.to_json)
+      request = stub_request(:get, 'https://region.example.test/api/publish/v2/app-package-info?packageId=package').
+                with(headers: { 'Appid' => 'app', 'Authorization' => 'Bearer supplied-token', 'Client-Id' => 'client' }).
+                to_return(status: 200, body: { packageInfo: { packageId: 'package' } }.to_json)
       client = described_class.new(api_base: 'https://region.example.test/api/', access_token: 'supplied-token', client_id: 'client')
 
-      expect(client.app_file_info('app')).to eq('data' => [])
+      expect(client.app_package_info('app', 'package')).to eq('packageInfo' => { 'packageId' => 'package' })
       expect(request).to have_been_requested.once
       expect(a_request(:post, %r{/oauth2/v1/token})).not_to have_been_made
     end
@@ -397,10 +397,11 @@ describe Fastlane do
   describe Fastlane::Actions::GetAppgalleryVersionAction do
     it 'stores package information in lane context' do
       response = { 'data' => [{ 'versionName' => '1.0.0' }] }
-      client = instance_double(Fastlane::Helper::AppgalleryClient, app_file_info: response)
+      client = instance_double(Fastlane::Helper::AppgalleryClient, app_package_info: response)
       allow(Fastlane::Helper::AppgalleryClient).to receive(:new).and_return(client)
 
-      expect(described_class.run(app_id: 'app', api_base: 'https://api.example.test', access_token: 'token', client_id: 'client')).to eq(response)
+      expect(described_class.run(app_id: 'app', package_id: 'package', api_base: 'https://api.example.test', access_token: 'token', client_id: 'client')).to eq(response)
+      expect(client).to have_received(:app_package_info).with('app', 'package')
       expect(Fastlane::Actions.lane_context[Fastlane::Actions::SharedValues::APPGALLERY_FILE_INFO]).to eq(response)
     end
   end

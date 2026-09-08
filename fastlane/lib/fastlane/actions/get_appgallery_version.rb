@@ -10,13 +10,13 @@ module Fastlane
     class GetAppgalleryVersionAction < Action
       def self.run(params)
         client = Helper::AppgalleryClient.new(api_base: params[:api_base], access_token: params[:access_token], client_id: params[:client_id], client_secret: params[:client_secret], service_account_key_path: params[:service_account_key_path])
-        response = client.app_file_info(params[:app_id])
+        response = client.app_package_info(params[:app_id], params[:package_id])
         Actions.lane_context[SharedValues::APPGALLERY_FILE_INFO] = response
         response
       end
 
       def self.description
-        'Fetch AppGallery Connect package information for a HarmonyOS app'
+        'Fetch AppGallery Connect information for one HarmonyOS package'
       end
 
       def self.output
@@ -24,7 +24,9 @@ module Fastlane
       end
 
       def self.available_options
-        AppgalleryOptions.common
+        AppgalleryOptions.common + [
+          FastlaneCore::ConfigItem.new(key: :package_id, env_name: 'FL_APPGALLERY_PACKAGE_ID', description: 'Package ID returned by update_appgallery_package_info', verify_block: proc { |value| UI.user_error!('No AppGallery package ID provided') if value.to_s.empty? })
+        ]
       end
 
       def self.is_supported?(platform)

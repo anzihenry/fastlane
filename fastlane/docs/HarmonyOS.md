@@ -152,6 +152,10 @@ Status `0` means ready, `1` means processing, and `2` means failed. The action
 returns only when every package is ready and fails immediately for failed or
 unknown statuses.
 
+Use `get_appgallery_version(app_id: app_id, package_id: package_id)` to retrieve
+the parsed version name, version code, build version, and permissions for one
+uploaded package.
+
 `submit_to_appgallery` uses the HarmonyOS v3 Publishing API. It supports an
 optional `release_time` and `remark`. For a seven-day phased release, use:
 
