@@ -273,6 +273,73 @@ describe Fastlane do
     end
   end
 
+  describe Fastlane::Actions::SyncAppgalleryMetadataAction do
+    it 'syncs basic metadata, localized text, and a language/device asset matrix' do
+      directory = Dir.mktmpdir
+      metadata_path = File.join(directory, 'metadata')
+      image_path = File.join(metadata_path, 'en-US', 'images', '4')
+      screenshot_path = File.join(image_path, 'screenshots')
+      FileUtils.mkdir_p(screenshot_path)
+      File.write(File.join(metadata_path, 'app.json'), { privacyPolicy: 'https://example.test/privacy' }.to_json)
+      File.write(File.join(metadata_path, 'en-US', 'title.txt'), "Demo\n")
+      File.write(File.join(metadata_path, 'en-US', 'full_description.txt'), 'Description')
+      FileUtils.touch(File.join(image_path, 'icon.png'))
+      FileUtils.touch(File.join(screenshot_path, '01.png'))
+      client = instance_double(Fastlane::Helper::AppgalleryClient)
+      allow(client).to receive(:update_app_info)
+      allow(client).to receive(:update_language_info)
+      allow(client).to receive(:upload_asset).and_return({ 'objectId' => 'CN/icon.png' }, { 'objectId' => 'CN/screenshot.png' })
+      allow(client).to receive(:update_app_file_info)
+      allow(Fastlane::Helper::AppgalleryClient).to receive(:new).and_return(client)
+
+      result = described_class.run(app_id: 'app', metadata_path: metadata_path, release_type: 1, release_phase: 0, show_type: 0, chinese_mainland_flag: nil, skip_upload_metadata: false, skip_upload_assets: false, validate_only: false)
+
+      expect(client).to have_received(:update_app_info).with('app', 'privacyPolicy' => 'https://example.test/privacy')
+      expect(client).to have_received(:update_language_info).with('app', { 'lang' => 'en-US', 'appName' => 'Demo', 'appDesc' => 'Description' }, release_type: 1, release_phase: 0)
+      expect(client).to have_received(:update_app_file_info).with(
+        'app',
+        {
+          'appIconList' => [{ 'lang' => 'en-US', 'fileInfoList' => [{ 'deviceType' => 4, 'objectIdList' => ['CN/icon.png'], 'showType' => 0 }] }],
+          'screenShotList' => [{ 'lang' => 'en-US', 'fileInfoList' => [{ 'deviceType' => 4, 'objectIdList' => ['CN/screenshot.png'], 'showType' => 0 }] }]
+        },
+        release_type: 1,
+        release_phase: 0
+      )
+      expect(result['languages'].first['devices'].first['deviceType']).to eq(4)
+      expect(Fastlane::Actions.lane_context[Fastlane::Actions::SharedValues::APPGALLERY_METADATA_SYNC_RESULT]).to eq(result)
+    ensure
+      FileUtils.remove_entry(directory) if directory && File.exist?(directory)
+    end
+
+    it 'validates the complete directory without constructing an API client' do
+      directory = Dir.mktmpdir
+      metadata_path = File.join(directory, 'metadata', 'zh-CN')
+      FileUtils.mkdir_p(metadata_path)
+      File.write(File.join(metadata_path, 'short_description.txt'), '简介')
+      allow(Fastlane::Helper::AppgalleryClient).to receive(:new)
+
+      result = described_class.run(app_id: 'app', metadata_path: File.dirname(metadata_path), validate_only: true)
+
+      expect(result['languages'].first['languageInfo']).to include('lang' => 'zh-CN', 'briefInfo' => '简介')
+      expect(Fastlane::Helper::AppgalleryClient).not_to have_received(:new)
+    ensure
+      FileUtils.remove_entry(directory) if directory && File.exist?(directory)
+    end
+
+    it 'rejects non-numeric device directories before uploading anything' do
+      directory = Dir.mktmpdir
+      image_path = File.join(directory, 'metadata', 'en-US', 'images', 'phone')
+      FileUtils.mkdir_p(image_path)
+      FileUtils.touch(File.join(image_path, 'icon.png'))
+
+      expect do
+        described_class.run(app_id: 'app', metadata_path: File.join(directory, 'metadata'), validate_only: true)
+      end.to raise_error(FastlaneCore::Interface::FastlaneError, /numeric deviceType/)
+    ensure
+      FileUtils.remove_entry(directory) if directory && File.exist?(directory)
+    end
+  end
+
   describe Fastlane::Actions::SubmitToAppgalleryAction do
     it 'submits a release only through the dedicated action' do
       response = { 'ret' => { 'code' => 0 } }

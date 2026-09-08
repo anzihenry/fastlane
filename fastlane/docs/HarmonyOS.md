@@ -250,6 +250,40 @@ The same `LangFileInfo` structure supports `screenShotList`,
 `introVideoList`, `rcmdVideoList`, and `rcmdPicList`. Keep screenshots and
 videos for the same language and device in the same orientation.
 
+For an Android `supply`-style workflow, `sync_appgallery_metadata` reads this
+directory structure:
+
+```text
+fastlane/metadata/harmonyos/
+├── app.json
+├── en-US/
+│   ├── title.txt
+│   ├── short_description.txt
+│   ├── full_description.txt
+│   ├── changelogs/default.txt
+│   └── images/4/
+│       ├── icon.png
+│       └── screenshots/01.png
+└── zh-CN/
+    └── images/5/screenshots/01.png
+```
+
+`app.json` contains global fields accepted by `update_appgallery_app_info`.
+Each image directory name is AppGallery's numeric `deviceType`, so the layout
+naturally represents the language/device matrix. Run a local-only validation
+before changing the store:
+
+```ruby
+sync_appgallery_metadata(
+  app_id: app_id,
+  metadata_path: 'fastlane/metadata/harmonyos',
+  validate_only: true
+)
+```
+
+Remove `validate_only` to sync. `skip_upload_metadata` and
+`skip_upload_assets` allow updating either half independently.
+
 `download_from_appgallery` downloads a package from an explicit,
 AppGallery-provided URL and exposes `APPGALLERY_DOWNLOADED_PACKAGE_PATH`. It
 does not enumerate private download URLs or persist credentials.
@@ -267,7 +301,7 @@ can frame, archive, or upload the resulting images.
 ## Non-goals for the first release
 
 - Generating or managing HarmonyOS signing certificates and profiles.
-- Creating AppGallery applications or uploading localized store assets.
+- Creating AppGallery applications through an API (not supported by AppGallery Connect).
 - Automatically installing DevEco Studio, SDKs, or HDC.
 - Guessing a device screenshot test framework.
 
