@@ -85,6 +85,16 @@ describe Fastlane do
       expect(request).to have_been_requested.once
     end
 
+    it 'queries v3 package compile status for multiple package IDs' do
+      request = stub_request(:get, 'https://connect-api.cloud.huawei.com/api/publish/v3/package/compile/status?appId=app&pkgIds=one%2Ctwo').
+                with(headers: { 'Authorization' => 'Bearer supplied-token', 'Client-Id' => 'client' }).
+                to_return(status: 200, body: { ret: { code: 0 }, pkgStateList: [] }.to_json)
+      client = described_class.new(access_token: 'supplied-token', client_id: 'client')
+
+      expect(client.package_compile_status('app', ['one', 'two'])).to eq('ret' => { 'code' => 0 }, 'pkgStateList' => [])
+      expect(request).to have_been_requested.once
+    end
+
     it 'fails before an authenticated request when credentials are incomplete' do
       client = described_class.new(client_id: 'client')
 
@@ -174,6 +184,34 @@ describe Fastlane do
       expect(client).to have_received(:versions).with('app', package_name: nil, state: [0, 1])
       expect(result).to eq(response)
       expect(Fastlane::Actions.lane_context[Fastlane::Actions::SharedValues::APPGALLERY_VERSIONS]).to eq(response)
+    end
+  end
+
+  describe Fastlane::Actions::WaitForAppgalleryPackageProcessingAction do
+    it 'polls until every package is ready' do
+      processing = { 'pkgStateList' => [{ 'pkgId' => 'package', 'successStatus' => 1 }] }
+      ready = { 'pkgStateList' => [{ 'pkgId' => 'package', 'successStatus' => 0 }] }
+      client = instance_double(Fastlane::Helper::AppgalleryClient)
+      allow(client).to receive(:package_compile_status).and_return(processing, ready)
+      allow(Fastlane::Helper::AppgalleryClient).to receive(:new).and_return(client)
+      allow(described_class).to receive(:sleep)
+
+      result = described_class.run(app_id: 'app', package_ids: ['package'], interval: 1, timeout: 30)
+
+      expect(result).to eq(ready)
+      expect(client).to have_received(:package_compile_status).twice
+      expect(described_class).to have_received(:sleep).with(1).once
+      expect(Fastlane::Actions.lane_context[Fastlane::Actions::SharedValues::APPGALLERY_PACKAGE_STATES]).to eq(ready)
+    end
+
+    it 'fails immediately when AppGallery reports a package processing failure' do
+      failed = { 'pkgStateList' => [{ 'pkgId' => 'broken', 'successStatus' => 2 }] }
+      client = instance_double(Fastlane::Helper::AppgalleryClient, package_compile_status: failed)
+      allow(Fastlane::Helper::AppgalleryClient).to receive(:new).and_return(client)
+
+      expect do
+        described_class.run(app_id: 'app', package_ids: ['broken'], interval: 1, timeout: 30)
+      end.to raise_error(FastlaneCore::Interface::FastlaneError, /broken/)
     end
   end
 

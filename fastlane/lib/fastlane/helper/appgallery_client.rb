@@ -56,6 +56,11 @@ module Fastlane
         request_json(:post, '/publish/v3/version/brief-info/list', body: body, headers: { 'appId' => app_id })
       end
 
+      def package_compile_status(app_id, package_ids)
+        query = { 'appId' => app_id, 'pkgIds' => Array(package_ids).join(',') }
+        request_json(:get, "/publish/v3/package/compile/status?#{URI.encode_www_form(query)}")
+      end
+
       def update_app_info(app_id, app_info)
         request_json(:put, "/publish/v2/app-info?appId=#{URI.encode_www_form_component(app_id)}", body: app_info)
       end
