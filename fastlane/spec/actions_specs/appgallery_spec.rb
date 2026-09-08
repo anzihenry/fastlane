@@ -95,6 +95,29 @@ describe Fastlane do
       expect(request).to have_been_requested.once
     end
 
+    it 'submits a HarmonyOS release through the v3 endpoint' do
+      release_info = { 'releaseType' => 1, 'releasePhase' => 3, 'phasedReleaseDescription' => 'Controlled rollout' }
+      request = stub_request(:post, 'https://connect-api.cloud.huawei.com/api/publish/v3/app-submit?appId=app').
+                with(headers: { 'Authorization' => 'Bearer supplied-token', 'Client-Id' => 'client' }, body: release_info.to_json).
+                to_return(status: 200, body: { ret: { code: 0 } }.to_json)
+      client = described_class.new(access_token: 'supplied-token', client_id: 'client')
+
+      expect(client.submit('app', release_info: release_info)).to eq('ret' => { 'code' => 0 })
+      expect(request).to have_been_requested.once
+    end
+
+    it 'updates phased release settings with the app ID header' do
+      body = { 'versionId' => 'version', 'releasePhase' => 3, 'state' => 'SUSPEND', 'phaseDay' => 4 }
+      request = stub_request(:put, 'https://connect-api.cloud.huawei.com/api/publish/v2/version/phased-release').
+                with(headers: { 'Appid' => 'app', 'Authorization' => 'Bearer supplied-token', 'Client-Id' => 'client' }, body: body.to_json).
+                to_return(status: 200, body: { ret: { code: 0 } }.to_json)
+      client = described_class.new(access_token: 'supplied-token', client_id: 'client')
+
+      result = client.update_phased_release('app', version_id: 'version', release_phase: 3, state: 'SUSPEND', phase_day: 4)
+      expect(result).to eq('ret' => { 'code' => 0 })
+      expect(request).to have_been_requested.once
+    end
+
     it 'fails before an authenticated request when credentials are incomplete' do
       client = described_class.new(client_id: 'client')
 
@@ -154,11 +177,25 @@ describe Fastlane do
       client = instance_double(Fastlane::Helper::AppgalleryClient, submit: response)
       allow(Fastlane::Helper::AppgalleryClient).to receive(:new).and_return(client)
 
-      result = described_class.run(app_id: 'app', api_base: 'https://api.example.test', access_token: 'token', client_id: 'client')
+      result = described_class.run(app_id: 'app', api_base: 'https://api.example.test', access_token: 'token', client_id: 'client', release_time: nil, remark: nil, release_type: 1, release_phase: 0, phased_release_description: nil)
 
-      expect(client).to have_received(:submit).with('app')
+      expect(client).to have_received(:submit).with('app', release_info: { 'releaseType' => 1, 'releasePhase' => 0 })
       expect(result).to eq(response)
       expect(Fastlane::Actions.lane_context[Fastlane::Actions::SharedValues::APPGALLERY_SUBMIT_RESPONSE]).to eq(response)
+    end
+  end
+
+  describe Fastlane::Actions::UpdateAppgalleryPhasedReleaseAction do
+    it 'updates phased release controls and stores the response' do
+      response = { 'ret' => { 'code' => 0 } }
+      client = instance_double(Fastlane::Helper::AppgalleryClient, update_phased_release: response)
+      allow(Fastlane::Helper::AppgalleryClient).to receive(:new).and_return(client)
+
+      result = described_class.run(app_id: 'app', version_id: 'version', release_phase: 3, state: 'RELEASE', description: 'rollout', phase_day: 5)
+
+      expect(client).to have_received(:update_phased_release).with('app', version_id: 'version', release_phase: 3, state: 'RELEASE', description: 'rollout', phase_day: 5)
+      expect(result).to eq(response)
+      expect(Fastlane::Actions.lane_context[Fastlane::Actions::SharedValues::APPGALLERY_PHASED_RELEASE_RESPONSE]).to eq(response)
     end
   end
 

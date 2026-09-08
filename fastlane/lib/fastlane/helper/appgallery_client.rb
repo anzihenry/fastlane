@@ -76,8 +76,19 @@ module Fastlane
         output_path
       end
 
-      def submit(app_id)
-        request_json(:post, "/publish/v2/app-submit?appid=#{URI.encode_www_form_component(app_id)}")
+      def submit(app_id, release_info: {})
+        request_json(:post, "/publish/v3/app-submit?appId=#{URI.encode_www_form_component(app_id)}", body: release_info)
+      end
+
+      def update_phased_release(app_id, version_id:, release_phase: nil, state: nil, description: nil, phase_day: nil)
+        body = {
+          'versionId' => version_id,
+          'releasePhase' => release_phase,
+          'state' => state,
+          'description' => description,
+          'phaseDay' => phase_day
+        }.compact
+        request_json(:put, '/publish/v2/version/phased-release', body: body, headers: { 'appId' => app_id })
       end
 
       private
