@@ -72,6 +72,42 @@ describe Fastlane do
       expect(a_request(:post, %r{/oauth2/v1/token})).not_to have_been_made
     end
 
+    it 'uploads an asset using the signed OBS request returned by AppGallery Connect' do
+      directory = Dir.mktmpdir
+      asset_path = File.join(directory, 'store icon.png')
+      File.binwrite(asset_path, 'asset')
+      sha256 = Digest::SHA256.file(asset_path).hexdigest
+      upload_info = {
+        objectId: 'CN/object.png',
+        url: 'https://obs.example.test/CN/object.png',
+        method: 'PUT',
+        headers: { 'Authorization' => 'OBS signature', 'x-amz-content-sha256' => sha256, 'Content-Type' => 'application/octet-stream' }
+      }
+      url_request = stub_request(:get, "https://connect-api.cloud.huawei.com/api/publish/v2/upload-url/for-obs?appId=app&fileName=store%20icon.png&sha256=#{sha256}&contentLength=5").
+                    to_return(status: 200, body: { urlInfo: upload_info }.to_json)
+      upload_request = stub_request(:put, 'https://obs.example.test/CN/object.png').
+                       with(headers: { 'Authorization' => 'OBS signature', 'x-amz-content-sha256' => sha256 }, body: 'asset').
+                       to_return(status: 200, body: '')
+      client = described_class.new(access_token: 'supplied-token', client_id: 'client')
+
+      expect(client.upload_asset('app', asset_path)).to eq(JSON.parse(upload_info.to_json))
+      expect(url_request).to have_been_requested.once
+      expect(upload_request).to have_been_requested.once
+    ensure
+      FileUtils.remove_entry(directory) if directory && File.exist?(directory)
+    end
+
+    it 'associates uploaded store assets through the v3 file information endpoint' do
+      file_info = { 'screenShotList' => [{ 'lang' => 'en-US', 'fileInfoList' => [{ 'deviceType' => 4, 'objectIdList' => ['CN/screenshot.png'], 'showType' => 0 }] }] }
+      request = stub_request(:put, 'https://connect-api.cloud.huawei.com/api/publish/v3/app-file-info?appId=app&releaseType=1&releasePhase=0').
+                with(body: file_info.to_json).
+                to_return(status: 200, body: { ret: { code: 0 } }.to_json)
+      client = described_class.new(access_token: 'supplied-token', client_id: 'client')
+
+      expect(client.update_app_file_info('app', file_info, release_type: 1, release_phase: 0)).to eq('ret' => { 'code' => 0 })
+      expect(request).to have_been_requested.once
+    end
+
     it 'queries the v3 HarmonyOS version list with the app ID header' do
       request = stub_request(:post, 'https://connect-api.cloud.huawei.com/api/publish/v3/version/brief-info/list').
                 with(
@@ -200,6 +236,40 @@ describe Fastlane do
       expect(client).to have_received(:update_app_file_info).with('app', file_info)
     ensure
       FileUtils.remove_entry(File.dirname(package)) if package && File.exist?(File.dirname(package))
+    end
+  end
+
+  describe Fastlane::Actions::UploadAppgalleryAssetAction do
+    it 'uploads an asset and exposes its AppGallery object ID' do
+      directory = Dir.mktmpdir
+      asset_path = File.join(directory, 'icon.png')
+      FileUtils.touch(asset_path)
+      upload_info = { 'objectId' => 'CN/icon.png', 'url' => 'https://obs.example.test/CN/icon.png', 'headers' => {} }
+      client = instance_double(Fastlane::Helper::AppgalleryClient, upload_asset: upload_info)
+      allow(Fastlane::Helper::AppgalleryClient).to receive(:new).and_return(client)
+
+      result = described_class.run(app_id: 'app', asset_path: asset_path, chinese_mainland_flag: nil)
+
+      expect(client).to have_received(:upload_asset).with('app', asset_path, chinese_mainland_flag: nil)
+      expect(result).to eq('CN/icon.png')
+      expect(Fastlane::Actions.lane_context[Fastlane::Actions::SharedValues::APPGALLERY_ASSET_OBJECT_ID]).to eq('CN/icon.png')
+    ensure
+      FileUtils.remove_entry(directory) if directory && File.exist?(directory)
+    end
+  end
+
+  describe Fastlane::Actions::UpdateAppgalleryFileInfoAction do
+    it 'associates localized assets and stores the response' do
+      file_info = { 'appIconList' => [] }
+      response = { 'ret' => { 'code' => 0 } }
+      client = instance_double(Fastlane::Helper::AppgalleryClient, update_app_file_info: response)
+      allow(Fastlane::Helper::AppgalleryClient).to receive(:new).and_return(client)
+
+      result = described_class.run(app_id: 'app', file_info: file_info, release_type: 1, release_phase: 0)
+
+      expect(client).to have_received(:update_app_file_info).with('app', file_info, release_type: 1, release_phase: 0)
+      expect(result).to eq(response)
+      expect(Fastlane::Actions.lane_context[Fastlane::Actions::SharedValues::APPGALLERY_FILE_INFO_RESPONSE]).to eq(response)
     end
   end
 

@@ -1,4 +1,5 @@
 require 'base64'
+require 'digest'
 require 'json'
 require 'net/http'
 require 'openssl'
@@ -19,13 +20,35 @@ module Fastlane
         @token_expires_at = nil
       end
 
-      def upload_file(upload_url, file_path)
+      def upload_file(upload_url, file_path, headers: {})
         uri = URI.parse(upload_url)
         request = Net::HTTP::Put.new(uri.request_uri)
         request['Content-Type'] = 'application/octet-stream'
         request['Content-Length'] = File.size(file_path).to_s
+        headers.each { |key, value| request[key] = value }
         request.body = File.binread(file_path)
         perform(uri, request)
+      end
+
+      def upload_url_info(app_id, file_path, chinese_mainland_flag: nil)
+        query = {
+          'appId' => app_id,
+          'fileName' => File.basename(file_path),
+          'sha256' => Digest::SHA256.file(file_path).hexdigest,
+          'contentLength' => File.size(file_path),
+          'chineseMainlandFlag' => chinese_mainland_flag
+        }.compact
+        response = request_json(:get, "/publish/v2/upload-url/for-obs?#{URI.encode_www_form(query)}")
+        url_info = response['urlInfo'] || response.dig('data', 'urlInfo')
+        UI.user_error!('AppGallery Connect did not return upload URL information') unless url_info.kind_of?(Hash) && !url_info['url'].to_s.empty? && !url_info['objectId'].to_s.empty?
+
+        url_info
+      end
+
+      def upload_asset(app_id, file_path, chinese_mainland_flag: nil)
+        url_info = upload_url_info(app_id, file_path, chinese_mainland_flag: chinese_mainland_flag)
+        upload_file(url_info['url'], file_path, headers: url_info['headers'] || {})
+        url_info
       end
 
       def upload_url(app_id, suffix)
@@ -33,8 +56,9 @@ module Fastlane
         find_value(response, 'uploadUrl') || UI.user_error!('AppGallery Connect did not return an upload URL')
       end
 
-      def update_app_file_info(app_id, file_info)
-        request_json(:put, "/publish/v2/app-file-info?appid=#{URI.encode_www_form_component(app_id)}", body: file_info)
+      def update_app_file_info(app_id, file_info, release_type: nil, release_phase: nil)
+        query = { 'appId' => app_id, 'releaseType' => release_type, 'releasePhase' => release_phase }.compact
+        request_json(:put, "/publish/v3/app-file-info?#{URI.encode_www_form(query)}", body: file_info)
       end
 
       def app_file_info(app_id)

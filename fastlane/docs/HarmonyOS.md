@@ -221,6 +221,35 @@ update_appgallery_language_info(
 `delete_appgallery_language_info` removes a non-default language. AppGallery
 Connect does not allow deleting the application's default language.
 
+Upload store assets before associating them with an application. The upload
+action calculates the file SHA-256, requests a short-lived signed OBS URL,
+forwards all signed headers, and returns the resulting `objectId`:
+
+```ruby
+icon_id = upload_appgallery_asset(
+  app_id: app_id,
+  asset_path: 'fastlane/metadata/en-US/images/icon.png'
+)
+
+update_appgallery_file_info(
+  app_id: app_id,
+  file_info: {
+    'appIconList' => [{
+      'lang' => 'en-US',
+      'fileInfoList' => [{
+        'deviceType' => 4,
+        'objectIdList' => [icon_id],
+        'showType' => 0
+      }]
+    }]
+  }
+)
+```
+
+The same `LangFileInfo` structure supports `screenShotList`,
+`introVideoList`, `rcmdVideoList`, and `rcmdPicList`. Keep screenshots and
+videos for the same language and device in the same orientation.
+
 `download_from_appgallery` downloads a package from an explicit,
 AppGallery-provided URL and exposes `APPGALLERY_DOWNLOADED_PACKAGE_PATH`. It
 does not enumerate private download URLs or persist credentials.
