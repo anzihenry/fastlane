@@ -5,12 +5,14 @@ require 'uri'
 module Fastlane
   module Helper
     class AppgalleryClient
-      DEFAULT_API_BASE = 'https://connect-api.cloud.huawei.com'.freeze
+      DEFAULT_API_BASE = 'https://connect-api.cloud.huawei.com/api'.freeze
 
-      def initialize(api_base: DEFAULT_API_BASE, access_token: nil, client_id: nil)
+      def initialize(api_base: DEFAULT_API_BASE, access_token: nil, client_id: nil, client_secret: nil)
         @api_base = api_base.chomp('/')
         @access_token = access_token
         @client_id = client_id
+        @client_secret = client_secret
+        @token_expires_at = nil
       end
 
       def upload_file(upload_url, file_path)
@@ -54,7 +56,7 @@ module Fastlane
         response = Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == 'https') do |http|
           http.request(Net::HTTP::Get.new(uri.request_uri))
         end
-        UI.user_error!("AppGallery package download failed (#{response.code}): #{response.body}") unless response.is_a?(Net::HTTPSuccess)
+        UI.user_error!("AppGallery package download failed (#{response.code}): #{response.body}") unless response.kind_of?(Net::HTTPSuccess)
 
         File.binwrite(output_path, response.body)
         output_path
@@ -73,8 +75,8 @@ module Fastlane
                   when :put then Net::HTTP::Put.new(uri.request_uri)
                   else Net::HTTP::Get.new(uri.request_uri)
                   end
-        request['Authorization'] = "Bearer #{@access_token}" unless @access_token.to_s.empty?
-        request['client_id'] = @client_id unless @client_id.to_s.empty?
+        request['Authorization'] = "Bearer #{access_token}"
+        request['client_id'] = required_client_id
         request['Content-Type'] = 'application/json'
         request.body = JSON.generate(body) if body
         response = perform(uri, request)
@@ -83,16 +85,52 @@ module Fastlane
         { 'raw_body' => response.body }
       end
 
+      def access_token
+        return @access_token unless @access_token.to_s.empty? || token_expired?
+
+        UI.user_error!('No AppGallery Connect client secret provided') if @client_secret.to_s.empty?
+
+        uri = URI.parse("#{@api_base}/oauth2/v1/token")
+        request = Net::HTTP::Post.new(uri.request_uri)
+        request['Content-Type'] = 'application/json'
+        request.body = JSON.generate(
+          grant_type: 'client_credentials',
+          client_id: required_client_id,
+          client_secret: @client_secret
+        )
+        response = perform(uri, request)
+        payload = JSON.parse(response.body)
+        @access_token = payload['access_token']
+        UI.user_error!('AppGallery Connect did not return an access token') if @access_token.to_s.empty?
+
+        expires_in = payload['expires_in'].to_i
+        refresh_after = expires_in > 60 ? expires_in - 60 : expires_in
+        @token_expires_at = Time.now + refresh_after if expires_in.positive?
+        @access_token
+      rescue JSON::ParserError
+        UI.user_error!('AppGallery Connect returned an invalid token response')
+      end
+
+      def required_client_id
+        UI.user_error!('No AppGallery Connect client ID provided') if @client_id.to_s.empty?
+
+        @client_id
+      end
+
+      def token_expired?
+        @token_expires_at && Time.now >= @token_expires_at
+      end
+
       def perform(uri, request)
         response = Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == 'https') { |http| http.request(request) }
-        return response if response.is_a?(Net::HTTPSuccess)
+        return response if response.kind_of?(Net::HTTPSuccess)
 
         UI.user_error!("AppGallery Connect request failed (#{response.code}): #{response.body}")
       end
 
       def find_value(object, key)
-        return object[key] if object.is_a?(Hash) && object.key?(key)
-        return object.values.lazy.map { |value| find_value(value, key) }.find(&:itself) if object.is_a?(Hash)
+        return object[key] if object.kind_of?(Hash) && object.key?(key)
+        return object.values.lazy.map { |value| find_value(value, key) }.find(&:itself) if object.kind_of?(Hash)
 
         nil
       end

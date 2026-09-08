@@ -1,4 +1,45 @@
 describe Fastlane do
+  describe Fastlane::Helper::AppgalleryClient do
+    it 'uses the official API base and exchanges client credentials for a reusable token' do
+      token_request = stub_request(:post, 'https://connect-api.cloud.huawei.com/api/oauth2/v1/token').
+                      with(
+                        headers: { 'Content-Type' => 'application/json' },
+                        body: {
+                          grant_type: 'client_credentials',
+                          client_id: 'client',
+                          client_secret: 'secret'
+                        }.to_json
+                      ).
+                      to_return(status: 200, body: { access_token: 'token', expires_in: 3600 }.to_json)
+      app_info_request = stub_request(:get, 'https://connect-api.cloud.huawei.com/api/publish/v2/app-info?appId=app').
+                         with(headers: { 'Authorization' => 'Bearer token', 'Client-Id' => 'client' }).
+                         to_return(status: 200, body: { data: { appName: 'Demo' } }.to_json)
+      client = described_class.new(client_id: 'client', client_secret: 'secret')
+
+      2.times { expect(client.app_info('app')).to eq('data' => { 'appName' => 'Demo' }) }
+
+      expect(token_request).to have_been_requested.once
+      expect(app_info_request).to have_been_requested.twice
+    end
+
+    it 'uses a provided access token without requesting another one' do
+      request = stub_request(:get, 'https://region.example.test/api/publish/v2/app-file-info?appid=app').
+                with(headers: { 'Authorization' => 'Bearer supplied-token', 'Client-Id' => 'client' }).
+                to_return(status: 200, body: { data: [] }.to_json)
+      client = described_class.new(api_base: 'https://region.example.test/api/', access_token: 'supplied-token', client_id: 'client')
+
+      expect(client.app_file_info('app')).to eq('data' => [])
+      expect(request).to have_been_requested.once
+      expect(a_request(:post, %r{/oauth2/v1/token})).not_to have_been_made
+    end
+
+    it 'fails before an authenticated request when credentials are incomplete' do
+      client = described_class.new(client_id: 'client')
+
+      expect { client.app_info('app') }.to raise_error(FastlaneCore::Interface::FastlaneError, /client secret/)
+    end
+  end
+
   describe Fastlane::Actions::UploadToAppgalleryAction do
     it 'uses the HAP produced by Hvigor when no package path is passed' do
       package = File.join(Dir.mktmpdir, 'entry.hap')

@@ -70,6 +70,34 @@ AppGallery Connect product and region, so retrieval of pre-signed URLs and
 updates to file information remain explicit CI responsibilities in this first
 release.
 
+The default API root is `https://connect-api.cloud.huawei.com/api`. Configure
+the API client created in AppGallery Connect with these environment variables:
+
+```sh
+export FL_APPGALLERY_CLIENT_ID='...'
+export FL_APPGALLERY_CLIENT_SECRET='...'
+export FL_APPGALLERY_APP_ID='...'
+```
+
+The client exchanges the ID and secret at `/oauth2/v1/token`, caches the
+returned token for the current action, and sends both the bearer token and
+client ID on publishing API requests. As an alternative, provide a short-lived
+token with `FL_APPGALLERY_ACCESS_TOKEN` and omit the secret. For a regional
+AppGallery endpoint, set `FL_APPGALLERY_API_BASE`; the token and publishing
+requests must use the same region.
+
+A minimal read-only connectivity check is:
+
+```ruby
+get_appgallery_app_info(
+  app_id: ENV['FL_APPGALLERY_APP_ID']
+)
+```
+
+Run this check before enabling package upload or release submission. A
+successful response confirms credentials, role permissions, region, and app
+visibility without changing the application.
+
 The upload and release steps are deliberately separate:
 
 ```ruby
