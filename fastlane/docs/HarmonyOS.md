@@ -126,9 +126,51 @@ submit_to_appgallery(app_id: ENV['APPGALLERY_APP_ID'])
 When `upload_url` is omitted, `upload_to_appgallery` obtains a temporary URL
 from AppGallery Connect. It can then upload the HAP/APP found in lane context
 and update the caller-supplied `file_info`. Keep `submit_for_review` disabled;
-`submit_to_appgallery` is the preferred explicit release step. Use
-`get_appgallery_version` to retrieve package information into
-`APPGALLERY_FILE_INFO` before submitting.
+`submit_to_appgallery` is the preferred explicit release step.
+
+## Release management
+
+Use `get_appgallery_versions` to retrieve commercial and test versions. The
+action supports optional package-name and state filters and stores the full
+response in `APPGALLERY_VERSIONS`. Each result contains the version ID and,
+when a package is attached, package IDs needed by the processing-status API.
+
+After updating package information, wait for asynchronous package parsing
+before submitting:
+
+```ruby
+wait_for_appgallery_package_processing(
+  app_id: ENV['FL_APPGALLERY_APP_ID'],
+  package_ids: [package_id],
+  interval: 10,
+  timeout: 300
+)
+```
+
+Status `0` means ready, `1` means processing, and `2` means failed. The action
+returns only when every package is ready and fails immediately for failed or
+unknown statuses.
+
+`submit_to_appgallery` uses the HarmonyOS v3 Publishing API. It supports an
+optional `release_time` and `remark`. For a seven-day phased release, use:
+
+```ruby
+submit_to_appgallery(
+  app_id: ENV['FL_APPGALLERY_APP_ID'],
+  release_phase: 3,
+  phased_release_description: 'Monitor stability during gradual rollout'
+)
+```
+
+After approval, `update_appgallery_phased_release` can pause with
+`state: 'SUSPEND'`, resume with `state: 'RELEASE'`, accelerate with a
+`phase_day` from 2 through 7, or switch to full release with
+`release_phase: 4`. Query `get_appgallery_versions` first to obtain the exact
+version ID.
+
+`cancel_appgallery_review` withdraws an eligible version from review. This is
+a state-changing operation and is never invoked implicitly by upload or query
+actions.
 
 ## App and package management
 

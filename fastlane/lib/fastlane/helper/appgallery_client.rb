@@ -91,6 +91,10 @@ module Fastlane
         request_json(:put, '/publish/v2/version/phased-release', body: body, headers: { 'appId' => app_id })
       end
 
+      def cancel_review(app_id, version_id)
+        request_json(:put, '/publish/v3/version/on-shelf/cancel', body: { 'versionId' => version_id }, headers: { 'appId' => app_id })
+      end
+
       private
 
       def request_json(method, path, body: nil, headers: {})

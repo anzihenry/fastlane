@@ -118,6 +118,19 @@ describe Fastlane do
       expect(request).to have_been_requested.once
     end
 
+    it 'cancels review through the v3 endpoint with a version ID' do
+      request = stub_request(:put, 'https://connect-api.cloud.huawei.com/api/publish/v3/version/on-shelf/cancel').
+                with(
+                  headers: { 'Appid' => 'app', 'Authorization' => 'Bearer supplied-token', 'Client-Id' => 'client' },
+                  body: { versionId: 'version' }.to_json
+                ).
+                to_return(status: 200, body: { ret: { code: 0 } }.to_json)
+      client = described_class.new(access_token: 'supplied-token', client_id: 'client')
+
+      expect(client.cancel_review('app', 'version')).to eq('ret' => { 'code' => 0 })
+      expect(request).to have_been_requested.once
+    end
+
     it 'fails before an authenticated request when credentials are incomplete' do
       client = described_class.new(client_id: 'client')
 
@@ -196,6 +209,20 @@ describe Fastlane do
       expect(client).to have_received(:update_phased_release).with('app', version_id: 'version', release_phase: 3, state: 'RELEASE', description: 'rollout', phase_day: 5)
       expect(result).to eq(response)
       expect(Fastlane::Actions.lane_context[Fastlane::Actions::SharedValues::APPGALLERY_PHASED_RELEASE_RESPONSE]).to eq(response)
+    end
+  end
+
+  describe Fastlane::Actions::CancelAppgalleryReviewAction do
+    it 'cancels review for the selected version and stores the response' do
+      response = { 'ret' => { 'code' => 0 } }
+      client = instance_double(Fastlane::Helper::AppgalleryClient, cancel_review: response)
+      allow(Fastlane::Helper::AppgalleryClient).to receive(:new).and_return(client)
+
+      result = described_class.run(app_id: 'app', version_id: 'version')
+
+      expect(client).to have_received(:cancel_review).with('app', 'version')
+      expect(result).to eq(response)
+      expect(Fastlane::Actions.lane_context[Fastlane::Actions::SharedValues::APPGALLERY_CANCEL_REVIEW_RESPONSE]).to eq(response)
     end
   end
 
