@@ -72,6 +72,19 @@ describe Fastlane do
       expect(a_request(:post, %r{/oauth2/v1/token})).not_to have_been_made
     end
 
+    it 'queries the v3 HarmonyOS version list with the app ID header' do
+      request = stub_request(:post, 'https://connect-api.cloud.huawei.com/api/publish/v3/version/brief-info/list').
+                with(
+                  headers: { 'Appid' => 'app', 'Authorization' => 'Bearer supplied-token', 'Client-Id' => 'client' },
+                  body: { packageName: 'com.example.demo', state: '0,1' }.to_json
+                ).
+                to_return(status: 200, body: { ret: { code: 0 }, versionList: [] }.to_json)
+      client = described_class.new(access_token: 'supplied-token', client_id: 'client')
+
+      expect(client.versions('app', package_name: 'com.example.demo', state: [0, 1])).to eq('ret' => { 'code' => 0 }, 'versionList' => [])
+      expect(request).to have_been_requested.once
+    end
+
     it 'fails before an authenticated request when credentials are incomplete' do
       client = described_class.new(client_id: 'client')
 
@@ -147,6 +160,20 @@ describe Fastlane do
 
       expect(described_class.run(app_id: 'app', api_base: 'https://api.example.test', access_token: 'token', client_id: 'client')).to eq(response)
       expect(Fastlane::Actions.lane_context[Fastlane::Actions::SharedValues::APPGALLERY_FILE_INFO]).to eq(response)
+    end
+  end
+
+  describe Fastlane::Actions::GetAppgalleryVersionsAction do
+    it 'stores the version list in lane context' do
+      response = { 'ret' => { 'code' => 0 }, 'versionList' => [{ 'versionId' => 'version' }] }
+      client = instance_double(Fastlane::Helper::AppgalleryClient, versions: response)
+      allow(Fastlane::Helper::AppgalleryClient).to receive(:new).and_return(client)
+
+      result = described_class.run(app_id: 'app', api_base: 'https://api.example.test', access_token: 'token', client_id: 'client', package_name: nil, state: [0, 1])
+
+      expect(client).to have_received(:versions).with('app', package_name: nil, state: [0, 1])
+      expect(result).to eq(response)
+      expect(Fastlane::Actions.lane_context[Fastlane::Actions::SharedValues::APPGALLERY_VERSIONS]).to eq(response)
     end
   end
 

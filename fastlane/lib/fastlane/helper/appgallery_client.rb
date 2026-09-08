@@ -51,6 +51,11 @@ module Fastlane
         request_json(:get, "/publish/v2/appid-list?#{URI.encode_www_form(query)}")
       end
 
+      def versions(app_id, package_name: nil, state: nil)
+        body = { 'packageName' => package_name, 'state' => state.nil? ? nil : Array(state).join(',') }.compact
+        request_json(:post, '/publish/v3/version/brief-info/list', body: body, headers: { 'appId' => app_id })
+      end
+
       def update_app_info(app_id, app_info)
         request_json(:put, "/publish/v2/app-info?appId=#{URI.encode_www_form_component(app_id)}", body: app_info)
       end
@@ -72,7 +77,7 @@ module Fastlane
 
       private
 
-      def request_json(method, path, body: nil)
+      def request_json(method, path, body: nil, headers: {})
         uri = URI.parse("#{@api_base}#{path}")
         request = case method
                   when :post then Net::HTTP::Post.new(uri.request_uri)
@@ -80,6 +85,7 @@ module Fastlane
                   else Net::HTTP::Get.new(uri.request_uri)
                   end
         authentication_headers.each { |key, value| request[key] = value }
+        headers.each { |key, value| request[key] = value }
         request['Content-Type'] = 'application/json'
         request.body = JSON.generate(body) if body
         response = perform(uri, request)
