@@ -1,5 +1,44 @@
 describe Fastlane do
   describe Fastlane::Helper::AppgalleryClient do
+    it 'signs Service Account credentials as a PS256 bearer JWT without a client ID header' do
+      directory = Dir.mktmpdir
+      credential_path = File.join(directory, 'service-account.json')
+      private_key = OpenSSL::PKey::RSA.generate(2048)
+      File.write(
+        credential_path,
+        {
+          key_id: 'key-id',
+          private_key: private_key.to_pem,
+          sub_account: 'sub-account',
+          token_uri: 'https://oauth-login.cloud.huawei.com/oauth2/v3/token'
+        }.to_json
+      )
+      request = stub_request(:get, 'https://connect-api.cloud.huawei.com/api/publish/v2/app-info?appId=app').
+                with do |http_request|
+                  authorization = http_request.headers['Authorization']
+                  jwt = authorization&.delete_prefix('Bearer ')
+                  header_segment, payload_segment, signature_segment = jwt.to_s.split('.')
+                  header = JSON.parse(Base64.urlsafe_decode64(header_segment))
+                  payload = JSON.parse(Base64.urlsafe_decode64(payload_segment))
+                  signature = Base64.urlsafe_decode64(signature_segment)
+                  signing_input = "#{header_segment}.#{payload_segment}"
+
+                  http_request.headers['Client-Id'].nil? &&
+                    header == { 'kid' => 'key-id', 'typ' => 'JWT', 'alg' => 'PS256' } &&
+                    payload['iss'] == 'sub-account' &&
+                    payload['aud'] == 'https://oauth-login.cloud.huawei.com/oauth2/v3/token' &&
+                    payload['exp'] - payload['iat'] == 3600 &&
+                    private_key.public_key.verify_pss('SHA256', signature, signing_input, salt_length: :digest, mgf1_hash: 'SHA256')
+                end.
+                to_return(status: 200, body: { data: { appName: 'Demo' } }.to_json)
+      client = described_class.new(service_account_key_path: credential_path)
+
+      expect(client.app_info('app')).to eq('data' => { 'appName' => 'Demo' })
+      expect(request).to have_been_requested.once
+    ensure
+      FileUtils.remove_entry(directory) if directory && File.exist?(directory)
+    end
+
     it 'uses the official API base and exchanges client credentials for a reusable token' do
       token_request = stub_request(:post, 'https://connect-api.cloud.huawei.com/api/oauth2/v1/token').
                       with(

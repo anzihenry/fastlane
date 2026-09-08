@@ -11,8 +11,9 @@ module Fastlane
         [
           FastlaneCore::ConfigItem.new(key: :api_base, env_name: 'FL_APPGALLERY_API_BASE', description: 'AppGallery Connect API base URL', default_value: Helper::AppgalleryClient::DEFAULT_API_BASE),
           FastlaneCore::ConfigItem.new(key: :access_token, env_name: 'FL_APPGALLERY_ACCESS_TOKEN', description: 'AppGallery Connect API access token; obtained automatically when client_secret is provided', sensitive: true, optional: true),
-          FastlaneCore::ConfigItem.new(key: :client_id, env_name: 'FL_APPGALLERY_CLIENT_ID', description: 'AppGallery Connect API client ID', sensitive: true),
-          FastlaneCore::ConfigItem.new(key: :client_secret, env_name: 'FL_APPGALLERY_CLIENT_SECRET', description: 'AppGallery Connect API client secret used to obtain an access token', sensitive: true, optional: true)
+          FastlaneCore::ConfigItem.new(key: :client_id, env_name: 'FL_APPGALLERY_CLIENT_ID', description: 'AppGallery Connect API client ID; not required with a Service Account', sensitive: true, optional: true),
+          FastlaneCore::ConfigItem.new(key: :client_secret, env_name: 'FL_APPGALLERY_CLIENT_SECRET', description: 'AppGallery Connect API client secret used to obtain an access token', sensitive: true, optional: true),
+          FastlaneCore::ConfigItem.new(key: :service_account_key_path, env_name: 'FL_APPGALLERY_SERVICE_ACCOUNT_KEY_PATH', description: 'Path to an AppGallery Connect Service Account JSON credential file', sensitive: true, optional: true)
         ]
       end
     end

@@ -8,7 +8,7 @@ module Fastlane
         UI.user_error!('No HarmonyOS package found. Pass `package_path` or run `hvigor` first.') if package_path.to_s.empty?
         UI.user_error!("Couldn't find HarmonyOS package at path '#{package_path}'") unless File.file?(package_path)
 
-        client = Helper::AppgalleryClient.new(api_base: params[:api_base], access_token: params[:access_token], client_id: params[:client_id], client_secret: params[:client_secret])
+        client = Helper::AppgalleryClient.new(api_base: params[:api_base], access_token: params[:access_token], client_id: params[:client_id], client_secret: params[:client_secret], service_account_key_path: params[:service_account_key_path])
         upload_url = params[:upload_url]
         if upload_url.to_s.empty?
           UI.user_error!('`app_id` is required when `upload_url` is not provided') if params[:app_id].to_s.empty?
@@ -44,6 +44,7 @@ module Fastlane
           FastlaneCore::ConfigItem.new(key: :access_token, env_name: 'FL_APPGALLERY_ACCESS_TOKEN', description: 'AppGallery Connect API access token', sensitive: true, optional: true),
           FastlaneCore::ConfigItem.new(key: :client_id, env_name: 'FL_APPGALLERY_CLIENT_ID', description: 'AppGallery Connect API client ID', sensitive: true, optional: true),
           FastlaneCore::ConfigItem.new(key: :client_secret, env_name: 'FL_APPGALLERY_CLIENT_SECRET', description: 'AppGallery Connect API client secret used to obtain an access token', sensitive: true, optional: true),
+          FastlaneCore::ConfigItem.new(key: :service_account_key_path, env_name: 'FL_APPGALLERY_SERVICE_ACCOUNT_KEY_PATH', description: 'Path to an AppGallery Connect Service Account JSON credential file', sensitive: true, optional: true),
           FastlaneCore::ConfigItem.new(key: :app_id, env_name: 'FL_APPGALLERY_APP_ID', description: 'AppGallery Connect application ID', optional: true),
           FastlaneCore::ConfigItem.new(key: :file_info, env_name: 'FL_APPGALLERY_FILE_INFO', description: 'AppGallery Connect file information JSON to update after upload', optional: true, type: Hash),
           FastlaneCore::ConfigItem.new(key: :submit_for_review, env_name: 'FL_APPGALLERY_SUBMIT_FOR_REVIEW', description: 'Submit a configured release after upload', type: Boolean, default_value: false)

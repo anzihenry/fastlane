@@ -9,7 +9,7 @@ module Fastlane
 
     class GetAppgalleryAppIdsAction < Action
       def self.run(params)
-        client = Helper::AppgalleryClient.new(api_base: params[:api_base], access_token: params[:access_token], client_id: params[:client_id], client_secret: params[:client_secret])
+        client = Helper::AppgalleryClient.new(api_base: params[:api_base], access_token: params[:access_token], client_id: params[:client_id], client_secret: params[:client_secret], service_account_key_path: params[:service_account_key_path])
         response = client.app_ids(params[:package_names], package_types: params[:package_types])
         Actions.lane_context[SharedValues::APPGALLERY_APP_IDS] = response
         response

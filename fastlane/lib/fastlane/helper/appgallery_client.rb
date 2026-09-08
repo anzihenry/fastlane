@@ -1,17 +1,21 @@
+require 'base64'
 require 'json'
 require 'net/http'
+require 'openssl'
 require 'uri'
 
 module Fastlane
   module Helper
     class AppgalleryClient
       DEFAULT_API_BASE = 'https://connect-api.cloud.huawei.com/api'.freeze
+      DEFAULT_SERVICE_ACCOUNT_AUDIENCE = 'https://oauth-login.cloud.huawei.com/oauth2/v3/token'.freeze
 
-      def initialize(api_base: DEFAULT_API_BASE, access_token: nil, client_id: nil, client_secret: nil)
+      def initialize(api_base: DEFAULT_API_BASE, access_token: nil, client_id: nil, client_secret: nil, service_account_key_path: nil)
         @api_base = api_base.chomp('/')
         @access_token = access_token
         @client_id = client_id
         @client_secret = client_secret
+        @service_account_key_path = service_account_key_path
         @token_expires_at = nil
       end
 
@@ -75,14 +79,59 @@ module Fastlane
                   when :put then Net::HTTP::Put.new(uri.request_uri)
                   else Net::HTTP::Get.new(uri.request_uri)
                   end
-        request['Authorization'] = "Bearer #{access_token}"
-        request['client_id'] = required_client_id
+        authentication_headers.each { |key, value| request[key] = value }
         request['Content-Type'] = 'application/json'
         request.body = JSON.generate(body) if body
         response = perform(uri, request)
         JSON.parse(response.body)
       rescue JSON::ParserError
         { 'raw_body' => response.body }
+      end
+
+      def authentication_headers
+        if @service_account_key_path.to_s.empty?
+          { 'Authorization' => "Bearer #{access_token}", 'client_id' => required_client_id }
+        else
+          { 'Authorization' => "Bearer #{service_account_token}" }
+        end
+      end
+
+      def service_account_token
+        return @access_token unless @access_token.to_s.empty? || token_expired?
+
+        credentials = service_account_credentials
+        issued_at = Time.now.to_i
+        expires_at = issued_at + 3600
+        header = { kid: required_credential(credentials, 'key_id'), typ: 'JWT', alg: 'PS256' }
+        payload = {
+          aud: credentials['token_uri'].to_s.empty? ? DEFAULT_SERVICE_ACCOUNT_AUDIENCE : credentials['token_uri'],
+          iss: required_credential(credentials, 'sub_account'),
+          exp: expires_at,
+          iat: issued_at
+        }
+        signing_input = [header, payload].map { |part| base64url(JSON.generate(part)) }.join('.')
+        private_key = OpenSSL::PKey.read(required_credential(credentials, 'private_key'))
+        signature = private_key.sign_pss('SHA256', signing_input, salt_length: :digest, mgf1_hash: 'SHA256')
+        @access_token = "#{signing_input}.#{base64url(signature)}"
+        @token_expires_at = Time.at(expires_at - 60)
+        @access_token
+      rescue Errno::ENOENT, JSON::ParserError, OpenSSL::PKey::PKeyError
+        UI.user_error!('Unable to read the AppGallery Connect service account credential file')
+      end
+
+      def service_account_credentials
+        JSON.parse(File.read(File.expand_path(@service_account_key_path)))
+      end
+
+      def required_credential(credentials, key)
+        value = credentials[key]
+        UI.user_error!("AppGallery Connect service account credential is missing #{key}") if value.to_s.empty?
+
+        value
+      end
+
+      def base64url(value)
+        Base64.urlsafe_encode64(value, padding: false)
       end
 
       def access_token

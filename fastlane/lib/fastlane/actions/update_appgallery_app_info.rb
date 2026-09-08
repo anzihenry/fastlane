@@ -5,7 +5,7 @@ module Fastlane
   module Actions
     class UpdateAppgalleryAppInfoAction < Action
       def self.run(params)
-        client = Helper::AppgalleryClient.new(api_base: params[:api_base], access_token: params[:access_token], client_id: params[:client_id], client_secret: params[:client_secret])
+        client = Helper::AppgalleryClient.new(api_base: params[:api_base], access_token: params[:access_token], client_id: params[:client_id], client_secret: params[:client_secret], service_account_key_path: params[:service_account_key_path])
         client.update_app_info(params[:app_id], params[:app_info])
       end
 

@@ -9,7 +9,7 @@ module Fastlane
 
     class GetAppgalleryVersionAction < Action
       def self.run(params)
-        client = Helper::AppgalleryClient.new(api_base: params[:api_base], access_token: params[:access_token], client_id: params[:client_id], client_secret: params[:client_secret])
+        client = Helper::AppgalleryClient.new(api_base: params[:api_base], access_token: params[:access_token], client_id: params[:client_id], client_secret: params[:client_secret], service_account_key_path: params[:service_account_key_path])
         response = client.app_file_info(params[:app_id])
         Actions.lane_context[SharedValues::APPGALLERY_FILE_INFO] = response
         response

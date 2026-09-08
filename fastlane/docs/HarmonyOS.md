@@ -70,8 +70,22 @@ AppGallery Connect product and region, so retrieval of pre-signed URLs and
 updates to file information remain explicit CI responsibilities in this first
 release.
 
-The default API root is `https://connect-api.cloud.huawei.com/api`. Configure
-the API client created in AppGallery Connect with these environment variables:
+The default API root is `https://connect-api.cloud.huawei.com/api`. A Service
+Account is the recommended authentication mode. Download its JSON credential
+file from `Users and permissions > API key > Connect API > Service Account`,
+store it outside the repository, and configure:
+
+```sh
+export FL_APPGALLERY_SERVICE_ACCOUNT_KEY_PATH='/secure/path/service-account.json'
+export FL_APPGALLERY_APP_ID='...'
+```
+
+The credential file contains `key_id`, `private_key`, `sub_account`, and
+`token_uri`. The client generates a one-hour PS256 JWT locally and sends it as
+the bearer token. The private key is never sent separately and the Service
+Account flow does not send a client ID header.
+
+The legacy API Client mode remains supported with these variables:
 
 ```sh
 export FL_APPGALLERY_CLIENT_ID='...'
@@ -79,12 +93,13 @@ export FL_APPGALLERY_CLIENT_SECRET='...'
 export FL_APPGALLERY_APP_ID='...'
 ```
 
-The client exchanges the ID and secret at `/oauth2/v1/token`, caches the
-returned token for the current action, and sends both the bearer token and
-client ID on publishing API requests. As an alternative, provide a short-lived
-token with `FL_APPGALLERY_ACCESS_TOKEN` and omit the secret. For a regional
-AppGallery endpoint, set `FL_APPGALLERY_API_BASE`; the token and publishing
-requests must use the same region.
+In API Client mode, the client exchanges the ID and secret at
+`/oauth2/v1/token`, caches the returned token for the current action, and sends
+both the bearer token and client ID on publishing API requests. As an
+alternative, provide a short-lived token with
+`FL_APPGALLERY_ACCESS_TOKEN`. For a regional AppGallery endpoint, set
+`FL_APPGALLERY_API_BASE`; API Client token and publishing requests must use the
+same region.
 
 A minimal read-only connectivity check is:
 
