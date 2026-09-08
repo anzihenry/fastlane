@@ -181,14 +181,23 @@ HarmonyOS APP type. `get_appgallery_app_info` and
 caller-supplied application fields. Neither action creates an application or
 submits a release.
 
+AppGallery Connect's Publishing API does not support creating an application.
+Create the application once in the AppGallery Connect console, then verify and
+resolve it for later lane steps:
+
+```ruby
+app_id = ensure_appgallery_app(package_name: 'com.example.demo')
+```
+
+The action stores the resolved ID in `APPGALLERY_APP_ID` and fails with an
+actionable message when the console application does not exist or the response
+is ambiguous.
+
 `download_from_appgallery` downloads a package from an explicit,
 AppGallery-provided URL and exposes `APPGALLERY_DOWNLOADED_PACKAGE_PATH`. It
 does not enumerate private download URLs or persist credentials.
 
-Creating applications is intentionally not automated yet. The required
-HarmonyOS creation API differs across AppGallery Connect product generations;
-it should be added only after a real test application confirms the endpoint,
-required fields, and role permissions.
+Creating applications cannot be automated through the current Publishing API.
 
 ## Screenshot contract
 
