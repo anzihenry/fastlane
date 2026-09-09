@@ -150,7 +150,14 @@ module Fastlane
         request['Content-Type'] = 'application/json'
         request.body = JSON.generate(body) if body
         response = perform(uri, request)
-        JSON.parse(response.body)
+        payload = JSON.parse(response.body)
+        return_code = payload.dig('ret', 'code') if payload.kind_of?(Hash)
+        unless return_code.nil? || return_code.to_s == '0'
+          message = payload.dig('ret', 'msg')
+          UI.user_error!("AppGallery Connect API failed (#{return_code}): #{message}")
+        end
+
+        payload
       rescue JSON::ParserError
         { 'raw_body' => response.body }
       end

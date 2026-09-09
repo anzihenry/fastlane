@@ -153,6 +153,16 @@ describe Fastlane do
       expect(request).to have_been_requested.once
     end
 
+    it 'fails when AppGallery returns a business error in a successful HTTP response' do
+      stub_request(:post, 'https://connect-api.cloud.huawei.com/api/publish/v3/app-submit?appId=app').
+        to_return(status: 200, body: { ret: { code: 204_144_691, msg: 'No full release version is on shelf' } }.to_json)
+      client = described_class.new(access_token: 'supplied-token', client_id: 'client')
+
+      expect do
+        client.submit('app')
+      end.to raise_error(FastlaneCore::Interface::FastlaneError, /204144691.*No full release version is on shelf/)
+    end
+
     it 'updates basic and localized HarmonyOS metadata through current publishing endpoints' do
       basic_request = stub_request(:put, 'https://connect-api.cloud.huawei.com/api/publish/v3/app-info?appId=app').
                       with(body: { privacyPolicy: 'https://example.test/privacy' }.to_json).
